@@ -7,6 +7,18 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  ADMIN
+  MANAGER
+  EMPLOYEE
+}
+
+enum Status {
+  ACTIVE
+  INACTIVE
+  UNVERIFIED
+}
+
 model User {
   id                       Int       @id @default(autoincrement())
   first_name               String?
@@ -14,7 +26,7 @@ model User {
   email                    String    @unique
   password                 String?
   image                    String?
-  role                     Role      @default(USER)
+  role                     Role      @default(EMPLOYEE)
   status                   Status    @default(UNVERIFIED)
   email_verification_token String?   @unique
   password_reset_token     String?   @unique
@@ -22,7 +34,8 @@ model User {
   created_at               DateTime  @default(now())
   updated_at               DateTime  @updatedAt
 
-  accounts Account[]
+  accounts        Account[]
+  assigned_shifts UserHasShift[]
 
   @@map("users")
 }
@@ -47,13 +60,39 @@ model Account {
   @@map("accounts")
 }
 
-enum Role {
-  USER
-  ADMIN
+model ShiftType {
+  id         Int      @id @default(autoincrement())
+  name       String
+  start_time DateTime @db.Time
+  end_time   DateTime @db.Time
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  shifts UserHasShift[]
+
+  @@map("shift_types")
 }
 
-enum Status {
-  ACTIVE
-  INACTIVE
-  UNVERIFIED
+model UserHasShift {
+  id            Int         @id @default(autoincrement())
+  user_id       Int
+  shift_type_id Int
+  date          DateTime    @db.Date
+  status        ShiftStatus @default(SCHEDULED)
+  created_at    DateTime    @default(now())
+  updated_at    DateTime    @updatedAt
+
+  user       User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  shift_type ShiftType @relation(fields: [shift_type_id], references: [id])
+
+  @@unique([user_id, shift_type_id, date])
+  @@map("user_has_shift")
+}
+
+enum ShiftStatus {
+  SCHEDULED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
 }
