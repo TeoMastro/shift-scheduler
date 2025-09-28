@@ -1,38 +1,39 @@
+name: shift-scheduler
 version: '3.8'
 
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: next_launch_kit_postgres
+    container_name: shift_scheduler_postgres
     restart: always
     environment:
-      POSTGRES_DB: next_launch_kit
+      POSTGRES_DB: shift_scheduler
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password123
     ports:
-      - '127.0.0.1:5433:5432'
+      - '127.0.0.1:5434:5432'
     volumes:
-      - next_launch_kit_postgres_data:/var/lib/postgresql/data
+      - shift_scheduler_postgres_data:/var/lib/postgresql/data
     networks:
-      - next_launch_kit_network
+      - shift_scheduler_network
 
   pgadmin:
     image: dpage/pgadmin4
-    container_name: next_launch_kit_pgadmin
+    container_name: shift_scheduler_pgadmin
     restart: always
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@nextlaunchkit.com
       PGADMIN_DEFAULT_PASSWORD: nextlaunchkit123
     ports:
-      - '127.0.0.1:5051:80'
+      - '127.0.0.1:5052:80'
     depends_on:
       - postgres
     networks:
-      - next_launch_kit_network
+      - shift_scheduler_network
 
 volumes:
-  next_launch_kit_postgres_data:
+  shift_scheduler_postgres_data:
 
 networks:
-  next_launch_kit_network:
+  shift_scheduler_network:
     external: false
