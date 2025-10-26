@@ -30,7 +30,7 @@ async function main() {
         last_name: 'User',
         email: 'user@nextlaunchkit.com',
         password: userPassword,
-        role: Role.USER,
+        role: Role.EMPLOYEE,
         status: Status.ACTIVE,
       },
     }),

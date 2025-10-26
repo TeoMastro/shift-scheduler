@@ -147,9 +147,9 @@ export function UserForm({ user, mode }: UserFormProps) {
                   <SelectValue placeholder={t('selectRole')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="USER">{t('userRole')}</SelectItem>
                   <SelectItem value="ADMIN">{t('adminRole')}</SelectItem>
                   <SelectItem value="EMPLOYEE">{t('employeeRole')}</SelectItem>
+                  <SelectItem value="MANAGER">{t('managerRole')}</SelectItem>
                 </SelectContent>
               </Select>
               {state.errors.role && (

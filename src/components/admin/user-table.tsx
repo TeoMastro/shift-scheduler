@@ -69,6 +69,31 @@ export const getStatusBadge = (status: Status, t: (key: string) => string) => {
   }
 };
 
+export const getRoleBadge = (role: Role, t: (key: string) => string) => {
+  switch (role) {
+    case Role.ADMIN:
+      return {
+        variant: 'default' as const,
+        text: t('adminRole'),
+      };
+    case Role.MANAGER:
+      return {
+        variant: 'outline' as const,
+        text: t('managerRole'),
+      };
+    case Role.EMPLOYEE:
+      return {
+        variant: 'secondary' as const,
+        text: t('employeeRole'),
+      };
+    default:
+      return {
+        variant: 'secondary' as const,
+        text: role,
+      };
+  }
+};
+
 export function UsersTable({
   users,
   currentUserId,
@@ -323,8 +348,9 @@ export function UsersTable({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t('allRoles')}</SelectItem>
-            <SelectItem value="USER">{t('userRole')}</SelectItem>
             <SelectItem value="ADMIN">{t('adminRole')}</SelectItem>
+            <SelectItem value="EMPLOYEE">{t('employeeRole')}</SelectItem>
+            <SelectItem value="MANAGER">{t('managerRole')}</SelectItem>
           </SelectContent>
         </Select>
         <Select
@@ -406,6 +432,7 @@ export function UsersTable({
           <TableBody>
             {users.map((user) => {
               const statusBadge = getStatusBadge(user.status, t);
+              const roleBadge = getRoleBadge(user.role, t);
               return (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">
@@ -413,15 +440,7 @@ export function UsersTable({
                   </TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>
-                    <Badge
-                      variant={
-                        user.role === Role.ADMIN ? 'default' : 'secondary'
-                      }
-                    >
-                      {user.role === Role.ADMIN
-                        ? t('adminRole')
-                        : t('userRole')}
-                    </Badge>
+                    <Badge variant={roleBadge.variant}>{roleBadge.text}</Badge>
                   </TableCell>
                   {/* Add status column */}
                   <TableCell>

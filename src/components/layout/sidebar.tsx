@@ -38,7 +38,7 @@ export async function AppSidebar() {
       ? [
           {
             title: t('users'),
-            url: '/admin/users',
+            url: '/admin/user',
             icon: Users,
           },
           {

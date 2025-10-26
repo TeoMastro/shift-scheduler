@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, Edit, Calendar, Mail, Shield, Trash2 } from 'lucide-react';
 import { UserViewProps } from '@/types/user';
-import { getStatusBadge } from '@/components/admin/user-table';
+import { getStatusBadge, getRoleBadge } from '@/components/admin/user-table';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +29,7 @@ export function UserView({ user }: UserViewProps) {
   const t = useTranslations('app');
 
   const statusBadge = getStatusBadge(user.status, t);
+  const roleBadge = getRoleBadge(user.role, t);
 
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
@@ -134,11 +135,8 @@ export function UserView({ user }: UserViewProps) {
                   <span>{t('role')}</span>
                 </label>
                 <div className="mt-1">
-                  <Badge
-                    variant={user.role === 'ADMIN' ? 'default' : 'secondary'}
-                    className="text-sm"
-                  >
-                    {user.role === 'ADMIN' ? t('adminRole') : t('userRole')}
+                  <Badge variant={roleBadge.variant} className="text-sm">
+                    {roleBadge.text}
                   </Badge>
                 </div>
               </div>
