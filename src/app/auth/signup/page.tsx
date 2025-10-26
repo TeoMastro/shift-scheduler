@@ -2,7 +2,7 @@ import { SignupForm } from '@/components/auth/signup-form';
 import { getTranslations } from 'next-intl/server';
 
 export default async function SignUpPage() {
-  const t = await getTranslations('SignUp');
+  const t = await getTranslations('app');
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">

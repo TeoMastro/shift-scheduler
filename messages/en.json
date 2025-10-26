@@ -1,5 +1,5 @@
 {
-  "SignIn": {
+  "app": {
     "signIn": "Sign In",
     "signOut": "Sign Out",
     "welcomeBack": "Welcome back",
@@ -13,28 +13,21 @@
     "invalidCredentials": "Invalid email or password",
     "somethingWentWrong": "Something went wrong",
     "forgotPassword": "Forgot password?",
-    "orContinueWith": "or continue with"
-  },
-  "SignUp": {
+    "orContinueWith": "or continue with",
     "pageTitle": "Create your account",
     "pageSubtitle": "Join us today",
     "title": "Create Account",
     "description": "Enter your information to create a new account",
     "firstName": "First Name",
     "lastName": "Last Name",
-    "password": "Password",
     "confirmPassword": "Confirm Password",
     "passwordPlaceholder": "At least 8 characters",
     "confirmPasswordPlaceholder": "Confirm your password",
     "createAccount": "Create Account",
     "alreadyHaveAccount": "Already have an account?",
     "accountCreatedCheckEmail": "Your account was successfully created. Check your email for verification!",
-    "accountCreationFailed": "Your account was not created. Please try again later!"
-  },
-  "Dashboard": {
-    "welcomeBack": "Welcome back, {name}"
-  },
-  "Validation": {
+    "accountCreationFailed": "Your account was not created. Please try again later!",
+    "welcomeBackName": "Welcome back, {name}",
     "allFieldsRequired": "All fields are required",
     "firstNameTooShort": "First name must be at least 2 characters long",
     "lastNameTooShort": "Last name must be at least 2 characters long",
@@ -54,20 +47,15 @@
     "userCreatedSuccess": "User created successfully",
     "userUpdatedSuccess": "User updated successfully",
     "userDeletedSuccess": "User deleted successfully",
-    "cannotDeleteOwnAccount": "You cannot delete your own account"
-  },
-  "Settings": {
-    "selectLanguage": "Select language"
-  },
-  "Menu": {
+    "cannotDeleteOwnAccount": "You cannot delete your own account",
+    "selectLanguage": "Select language",
     "home": "Home",
     "profile": "Profile",
     "settings": "Settings",
     "users": "Users",
     "privacyPolicy": "Privacy policy",
-    "termsOfService": "Terms of service"
-  },
-  "Profile": {
+    "termsOfService": "Terms of service",
+    "companies": "Companies",
     "userInformation": "User information",
     "accountDetails": "Account details",
     "id": "ID",
@@ -75,16 +63,10 @@
     "role": "Role",
     "accountType": "Account type",
     "status": "Status",
-    "active": "Active"
-  },
-  "User": {
+    "active": "Active",
     "createUser": "Create User",
     "updateUser": "Update User",
-    "firstName": "First Name",
-    "lastName": "Last Name",
     "email": "Email",
-    "password": "Password",
-    "role": "Role",
     "selectRole": "Select a role",
     "userRole": "User",
     "adminRole": "Admin",
@@ -92,7 +74,6 @@
     "searchUsers": "Search users...",
     "filterByRole": "Filter by role",
     "allRoles": "All Roles",
-    "name": "Name",
     "created": "Created",
     "actions": "Actions",
     "confirmDelete": "Are you sure?",
@@ -103,36 +84,22 @@
     "viewUser": "View User",
     "userId": "User ID",
     "fullName": "Full Name",
-    "status": "Status",
-    "active": "Active",
-    "createdAt": "Created At",
-    "updatedAt": "Updated At",
+    "createdAt": "Created at",
+    "updatedAt": "Updated at",
     "selectStatus": "Select status",
     "activeStatus": "Active",
     "inactiveStatus": "Inactive",
     "unverifiedStatus": "Unverified",
     "filterByStatus": "Filter by status",
-    "allStatuses": "All Statuses"
-  },
-  "Layout": {
+    "allStatuses": "All Statuses",
     "showing": "Showing",
     "to": "to",
     "of": "of",
     "results": "results",
     "resetFilters": "Reset filters",
     "create": "Create",
-    "update": "Update"
-  },
-  "Breadcrumbs": {
-    "user": "Users",
-    "profile": "Profile",
-    "settings": "Settings",
-    "create": "Create",
-    "update": "Update"
-  },
-  "VerifyEmail": {
-    "pageTitle": "Email verification",
-    "pageSubtitle": "Verifying your email address",
+    "update": "Update",
+    "company": "Company",
     "verifying": "Verifying your email...",
     "successTitle": "Email verified!",
     "errorTitle": "Verification failed",
@@ -142,28 +109,38 @@
     "verificationFailed": "An error occurred during verification.",
     "noTokenError": "No verification token provided.",
     "redirectingMessage": "Redirecting to login in 3 seconds...",
-    "backToLoginButton": "Back to login"
-  },
-  "ForgotPassword": {
-    "forgotPassword": "Forgot password",
+    "backToLoginButton": "Back to login",
     "enterEmailForReset": "Enter your email address and we'll send you a link to reset your password",
-    "enterEmail": "Enter your email",
     "sending": "Sending...",
     "sendResetLink": "Send reset link",
     "rememberPassword": "Remember your password?",
     "resetEmailSent": "If an account with that email exists, we've sent you a password reset link.",
-    "somethingWentWrong": "Something went wrong. Please try again."
-  },
-  "ResetPassword": {
     "resetPassword": "Reset password",
     "enterNewPassword": "Enter your new password below",
     "setNewPassword": "Set new password",
     "newPassword": "New password",
-    "confirmPassword": "Confirm password",
     "confirmNewPassword": "Confirm your new password",
     "resetting": "Resetting...",
-    "rememberPassword": "Remember your password?",
     "invalidOrExpiredToken": "Invalid or expired reset token. Please request a new password reset.",
-    "passwordResetSuccess": "Your password has been reset successfully. You can now sign in with your new password."
+    "passwordResetSuccess": "Your password has been reset successfully. You can now sign in with your new password.",
+    "cannotDeleteCompanyWithShiftTypes": "Cannot delete company with existing shift types",
+    "cannotDeleteCompanyWithUsers": "Cannot delete company with existing users",
+    "companyId": "Company ID",
+    "createCompany": "Create company",
+    "deleteCompanyConfirmation": "This action cannot be undone. This will permanently delete the company {name}.",
+    "enterCompanyName": "Enter company name",
+    "noCompaniesFound": "No companies found.",
+    "searchCompanies": "Search companies...",
+    "shiftTypes": "Shift types",
+    "updateCompany": "Update company",
+    "viewCompany": "View company",
+    "companyNotFound": "Company not found",
+    "cannotDeleteCompanyWithExistingUsers": "Cannot delete company with existing users",
+    "cannotDeleteCompanyWithExistingShiftTypes": "Cannot delete company with existing shift types",
+    "companyNameRequired": "Company name is required",
+    "companyNameTooShort": "Company name must be at least 2 characters long",
+    "companyNameTooLong": "Company name cannot exceed 100 characters",
+    "companyNameInvalid": "Please enter a valid company name",
+    "employeeRole": "Employee"
   }
 }

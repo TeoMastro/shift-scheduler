@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllUsersForExport } from '@/server-actions/user';
+import { getAllCompaniesForExport } from '@/server-actions/company';
 import * as XLSX from 'xlsx';
 import { getServerTranslation } from '@/lib/server-translations';
 
@@ -8,32 +8,27 @@ export async function GET(req: NextRequest) {
   const { page, limit, format, ...exportParams } = urlParams;
   const exportFormat = (format || 'csv').toLowerCase();
 
-  const users = await getAllUsersForExport(exportParams);
+  const companies = await getAllCompaniesForExport(exportParams);
 
   const nameLabel = await getServerTranslation('app', 'name');
-  const roleLabel = await getServerTranslation('app', 'role');
-  const statusLabel = await getServerTranslation('app', 'status');
+  const usersCountLabel = await getServerTranslation('app', 'users');
+  const shiftTypesCountLabel = await getServerTranslation('app', 'shiftTypes');
   const createdAtLabel = await getServerTranslation('app', 'createdAt');
 
-  const records = users.map((user) => ({
-    [nameLabel]: `${user.first_name} ${user.last_name}`,
-    email: user.email,
-    [roleLabel]: user.role,
-    [statusLabel]: user.status,
-    [createdAtLabel]: user.created_at,
+  const records = companies.map((company) => ({
+    [nameLabel]: company.name,
+    [usersCountLabel]: company._count?.users || 0,
+    [shiftTypesCountLabel]: company._count?.shift_types || 0,
+    [createdAtLabel]: company.created_at,
   }));
 
-  const filename = `users_${new Date().toISOString().slice(0, 10)}`;
-
+  const filename = `companies_${new Date().toISOString().slice(0, 10)}`;
   const worksheet = XLSX.utils.json_to_sheet(records);
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Users');
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Companies');
 
   if (exportFormat === 'xlsx') {
-    const buffer = XLSX.write(workbook, {
-      type: 'buffer',
-      bookType: 'xlsx',
-    });
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
     return new NextResponse(buffer, {
       status: 200,
       headers: {
@@ -43,12 +38,7 @@ export async function GET(req: NextRequest) {
       },
     });
   } else {
-    const csvString = XLSX.write(workbook, {
-      type: 'string',
-      bookType: 'csv',
-    });
-
-    // Add UTF-8 BOM to the beginning of the CSV string
+    const csvString = XLSX.write(workbook, { type: 'string', bookType: 'csv' });
     const BOM = '\uFEFF';
     const csvWithBOM = BOM + csvString;
     const buffer = Buffer.from(csvWithBOM, 'utf8');

@@ -1,5 +1,5 @@
 {
-  "SignIn": {
+  "app": {
     "signIn": "Σύνδεση",
     "signOut": "Αποσύνδεση",
     "welcomeBack": "Καλώς ήρθατε πίσω",
@@ -13,28 +13,21 @@
     "invalidCredentials": "Λάθος email ή κωδικός",
     "somethingWentWrong": "Κάτι πήγε στραβά",
     "forgotPassword": "Ξεχάσατε τον κωδικό σας;",
-    "orContinueWith": "ή συνεχίστε με"
-  },
-  "SignUp": {
+    "orContinueWith": "ή συνεχίστε με",
     "pageTitle": "Δημιουργήστε τον λογαριασμό σας",
     "pageSubtitle": "Γίνετε μέλος σήμερα",
     "title": "Δημιουργία Λογαριασμού",
     "description": "Εισάγετε τα στοιχεία σας για να δημιουργήσετε νέο λογαριασμό",
     "firstName": "Όνομα",
     "lastName": "Επώνυμο",
-    "password": "Κωδικός",
     "confirmPassword": "Επιβεβαίωση Κωδικού",
     "passwordPlaceholder": "Τουλάχιστον 8 χαρακτήρες",
     "confirmPasswordPlaceholder": "Επιβεβαιώστε τον κωδικό σας",
     "createAccount": "Δημιουργία Λογαριασμού",
     "alreadyHaveAccount": "Έχετε ήδη λογαριασμό;",
     "accountCreatedCheckEmail": "Ο λογαριασμός σας δημιουργήθηκε επιτυχώς. Ελέγξτε το email σας για επαλήθευση!",
-    "accountCreationFailed": "Ο λογαριασμός σας δεν δημιουργήθηκε. Παρακαλώ δοκιμάστε ξανά αργότερα!"
-  },
-  "Dashboard": {
-    "welcomeBack": "Καλώς ήρθατε πίσω, {name}"
-  },
-  "Validation": {
+    "accountCreationFailed": "Ο λογαριασμός σας δεν δημιουργήθηκε. Παρακαλώ δοκιμάστε ξανά αργότερα!",
+    "welcomeBackName": "Καλώς ήρθατε πίσω, {name}",
     "allFieldsRequired": "Όλα τα πεδία είναι υποχρεωτικά",
     "firstNameTooShort": "Το όνομα πρέπει να έχει τουλάχιστον 2 χαρακτήρες",
     "lastNameTooShort": "Το επώνυμο πρέπει να έχει τουλάχιστον 2 χαρακτήρες",
@@ -54,20 +47,19 @@
     "userCreatedSuccess": "Ο χρήστης δημιουργήθηκε επιτυχώς",
     "userUpdatedSuccess": "Ο χρήστης ενημερώθηκε επιτυχώς",
     "userDeletedSuccess": "Ο χρήστης διαγράφηκε επιτυχώς",
-    "cannotDeleteOwnAccount": "Δεν μπορείτε να διαγράψετε τον δικό σας λογαριασμό"
-  },
-  "Settings": {
-    "selectLanguage": "Επιλογή γλώσσας"
-  },
-  "Menu": {
+    "cannotDeleteOwnAccount": "Δεν μπορείτε να διαγράψετε τον δικό σας λογαριασμό",
+    "companyCreatedSuccess": "Η εταιρεία δημιουργήθηκε επιτυχώς",
+    "companyUpdatedSuccess": "Η εταιρεία ενημερώθηκε επιτυχώς",
+    "companyDeletedSuccess": "Η εταιρεία διαγράφηκε επιτυχώς",
+    "exportError": "Η εξαγωγή απέτυχε. Παρακαλώ δοκιμάστε ξανά.",
+    "selectLanguage": "Επιλογή γλώσσας",
     "home": "Αρχική",
     "profile": "Προφίλ",
     "settings": "Ρυθμίσεις",
     "users": "Χρήστες",
+    "companies": "Εταιρείες",
     "privacyPolicy": "Πολιτική απορρήτου",
-    "termsOfService": "Όροι παροχής υπηρεσιών"
-  },
-  "Profile": {
+    "termsOfService": "Όροι παροχής υπηρεσιών",
     "userInformation": "Στοιχεία χρήστη",
     "accountDetails": "Λεπτομέρειες λογαριασμού",
     "id": "ID",
@@ -75,16 +67,10 @@
     "role": "Ρόλος",
     "accountType": "Τύπος λογαριασμού",
     "status": "Κατάσταση",
-    "active": "Ενεργός"
-  },
-  "User": {
+    "active": "Ενεργός",
     "createUser": "Δημιουργία Χρήστη",
     "updateUser": "Ενημέρωση Χρήστη",
-    "firstName": "Όνομα",
-    "lastName": "Επώνυμο",
     "email": "Email",
-    "password": "Κωδικός",
-    "role": "Ρόλος",
     "selectRole": "Επιλέξτε ρόλο",
     "userRole": "Χρήστης",
     "adminRole": "Διαχειριστής",
@@ -92,7 +78,6 @@
     "searchUsers": "Αναζήτηση χρηστών...",
     "filterByRole": "Φιλτράρισμα κατά ρόλο",
     "allRoles": "Όλοι οι Ρόλοι",
-    "name": "Όνομα",
     "created": "Δημιουργήθηκε",
     "actions": "Ενέργειες",
     "confirmDelete": "Είστε σίγουροι;",
@@ -103,8 +88,6 @@
     "viewUser": "Προβολή Χρήστη",
     "userId": "ID Χρήστη",
     "fullName": "Πλήρες Όνομα",
-    "status": "Κατάσταση",
-    "active": "Ενεργός",
     "createdAt": "Δημιουργήθηκε στις",
     "updatedAt": "Ενημερώθηκε στις",
     "selectStatus": "Επιλέξτε κατάσταση",
@@ -112,9 +95,7 @@
     "inactiveStatus": "Ανενεργός",
     "unverifiedStatus": "Μη επιβεβαιωμένος",
     "filterByStatus": "Φιλτράρισμα κατά κατάσταση",
-    "allStatuses": "Όλες οι καταστάσεις"
-  },
-  "Layout": {
+    "allStatuses": "Όλες οι καταστάσεις",
     "showing": "Εμφανίζονται",
     "to": "έως",
     "of": "από",
@@ -122,18 +103,8 @@
     "page": "Σελίδα",
     "resetFilters": "Επαναφορά φίλτρων",
     "create": "Δημιουργία",
-    "update": "Ενημέρωση"
-  },
-  "Breadcrumbs": {
-    "user": "Χρήστες",
-    "profile": "Προφίλ",
-    "settings": "Ρυθμίσεις",
-    "create": "Δημιουργία",
-    "update": "Ενημέρωση"
-  },
-  "VerifyEmail": {
-    "pageTitle": "Επαλήθευση email",
-    "pageSubtitle": "Επαληθεύουμε τη διεύθυνση email σας",
+    "update": "Ενημέρωση",
+    "company": "Εταιρεία",
     "verifying": "Επαληθεύουμε το email σας...",
     "successTitle": "Το email επαληθεύτηκε!",
     "errorTitle": "Η επαλήθευση απέτυχε",
@@ -143,28 +114,38 @@
     "verificationFailed": "Προέκυψε σφάλμα κατά την επαλήθευση.",
     "noTokenError": "Δεν παρείχθη token επαλήθευσης.",
     "redirectingMessage": "Ανακατεύθυνση στη σελίδα σύνδεσης σε 3 δευτερόλεπτα...",
-    "backToLoginButton": "Επιστροφή στη σύνδεση"
-  },
-  "ForgotPassword": {
-    "forgotPassword": "Ξέχασα τον κωδικό",
+    "backToLoginButton": "Επιστροφή στη σύνδεση",
     "enterEmailForReset": "Εισάγετε τη διεύθυνση email σας και θα σας στείλουμε έναν σύνδεσμο για επαναφορά του κωδικού",
-    "enterEmail": "Εισάγετε το email σας",
     "sending": "Αποστολή...",
     "sendResetLink": "Αποστολή συνδέσμου επαναφοράς",
     "rememberPassword": "Θυμάστε τον κωδικό σας;",
     "resetEmailSent": "Εάν υπάρχει λογαριασμός με αυτό το email, σας έχουμε στείλει έναν σύνδεσμο επαναφοράς κωδικού.",
-    "somethingWentWrong": "Κάτι πήγε στραβά. Παρακαλώ δοκιμάστε ξανά."
-  },
-  "ResetPassword": {
     "resetPassword": "Επαναφορά κωδικού",
     "enterNewPassword": "Εισάγετε τον νέο σας κωδικό παρακάτω",
     "setNewPassword": "Ορισμός νέου κωδικού",
     "newPassword": "Νέος κωδικός",
-    "confirmPassword": "Επιβεβαίωση κωδικού",
     "confirmNewPassword": "Επιβεβαιώστε τον νέο σας κωδικό",
     "resetting": "Επαναφορά...",
-    "rememberPassword": "Θυμάστε τον κωδικό σας;",
     "invalidOrExpiredToken": "Μη έγκυρος ή ληγμένος σύνδεσμος επαναφοράς. Παρακαλώ ζητήστε νέα επαναφορά κωδικού.",
-    "passwordResetSuccess": "Ο κωδικός σας επαναφέρθηκε με επιτυχία. Μπορείτε τώρα να συνδεθείτε με τον νέο σας κωδικό."
+    "passwordResetSuccess": "Ο κωδικός σας επαναφέρθηκε με επιτυχία. Μπορείτε τώρα να συνδεθείτε με τον νέο σας κωδικό.",
+    "cannotDeleteCompanyWithShiftTypes": "Δεν είναι δυνατή η διαγραφή εταιρείας με υπάρχουσες βάρδιες",
+    "cannotDeleteCompanyWithUsers": "Δεν είναι δυνατή η διαγραφή εταιρείας με υπάρχοντες χρήστες",
+    "companyId": "ID Εταιρείας",
+    "createCompany": "Δημιουργία εταιρείας",
+    "deleteCompanyConfirmation": "Αυτή η ενέργεια δεν μπορεί να αναιρεθεί. Θα διαγράψει οριστικά την εταιρεία {name}.",
+    "enterCompanyName": "Εισάγετε όνομα εταιρείας",
+    "noCompaniesFound": "Δεν βρέθηκαν εταιρείες.",
+    "searchCompanies": "Αναζήτηση εταιρειών...",
+    "shiftTypes": "Τύποι βάρδιας",
+    "updateCompany": "Ενημέρωση εταιρείας",
+    "viewCompany": "Προβολή εταιρείας",
+    "companyNotFound": "Η εταιρεία δεν βρέθηκε",
+    "cannotDeleteCompanyWithExistingUsers": "Δεν είναι δυνατή η διαγραφή εταιρείας με υπάρχοντες χρήστες",
+    "cannotDeleteCompanyWithExistingShiftTypes": "Δεν είναι δυνατή η διαγραφή εταιρείας με υπάρχουσες βάρδιες",
+    "companyNameRequired": "Το όνομα εταιρείας είναι υποχρεωτικό",
+    "companyNameTooShort": "Το όνομα εταιρείας πρέπει να έχει τουλάχιστον 2 χαρακτήρες",
+    "companyNameTooLong": "Το όνομα εταιρείας δεν μπορεί να υπερβαίνει τους 100 χαρακτήρες",
+    "companyNameInvalid": "Παρακαλώ εισάγετε έγκυρο όνομα εταιρείας",
+    "employeeRole": "Υπάλληλος"
   }
 }

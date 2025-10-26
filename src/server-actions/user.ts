@@ -20,7 +20,7 @@ import {
 import { Role, Status } from '@prisma/client';
 import logger from '@/lib/logger';
 
-async function checkAdminAuth() {
+export async function checkAdminAuth() {
   const session = await auth();
 
   if (!session || session.user.role !== 'ADMIN') {
@@ -42,7 +42,7 @@ export async function createUserAction(
       last_name: formData.get('last_name')?.toString() ?? '',
       email: formData.get('email')?.toString() ?? '',
       password: formData.get('password')?.toString() ?? '',
-      role: (formData.get('role')?.toString() as Role) ?? Role.USER,
+      role: (formData.get('role')?.toString() as Role) ?? Role.EMPLOYEE,
       status: (formData.get('status')?.toString() as Status) ?? Status.ACTIVE,
     };
 
@@ -106,7 +106,7 @@ export async function createUserAction(
         last_name: formData.get('last_name')?.toString() ?? '',
         email: formData.get('email')?.toString() ?? '',
         password: '',
-        role: (formData.get('role')?.toString() as Role) ?? Role.USER,
+        role: (formData.get('role')?.toString() as Role) ?? Role.EMPLOYEE,
         status: (formData.get('status')?.toString() as Status) ?? Status.ACTIVE,
       },
       globalError: 'unexpectedError',
@@ -128,7 +128,7 @@ export async function updateUserAction(
       last_name: formData.get('last_name')?.toString() ?? '',
       email: formData.get('email')?.toString() ?? '',
       password: formData.get('password')?.toString() ?? '',
-      role: (formData.get('role')?.toString() as Role) ?? Role.USER,
+      role: (formData.get('role')?.toString() as Role) ?? Role.EMPLOYEE,
       status: (formData.get('status')?.toString() as Status) ?? Status.ACTIVE,
     };
 
@@ -219,7 +219,7 @@ export async function updateUserAction(
         last_name: formData.get('last_name')?.toString() ?? '',
         email: formData.get('email')?.toString() ?? '',
         password: '',
-        role: (formData.get('role')?.toString() as Role) ?? Role.USER,
+        role: (formData.get('role')?.toString() as Role) ?? Role.EMPLOYEE,
         status: (formData.get('status')?.toString() as Status) ?? Status.ACTIVE,
       },
       globalError: 'unexpectedError',
@@ -317,14 +317,14 @@ async function fetchUsers(params: GetUsersParams & { paginate?: boolean }) {
   const offset = (page - 1) * limit;
 
   const whereClause: {
-      OR?: Array<{
-        first_name?: { contains: string; mode: 'insensitive' };
-        last_name?: { contains: string; mode: 'insensitive' };
-        email?: { contains: string; mode: 'insensitive' };
-      }>;
-      role?: Role;
-      status?: Status;
-    } = {};
+    OR?: Array<{
+      first_name?: { contains: string; mode: 'insensitive' };
+      last_name?: { contains: string; mode: 'insensitive' };
+      email?: { contains: string; mode: 'insensitive' };
+    }>;
+    role?: Role;
+    status?: Status;
+  } = {};
 
   if (search) {
     whereClause.OR = [
@@ -335,7 +335,7 @@ async function fetchUsers(params: GetUsersParams & { paginate?: boolean }) {
   }
 
   if (roleFilter !== 'all') {
-    whereClause.role = roleFilter as 'USER' | 'ADMIN';
+    whereClause.role = roleFilter as 'EMPLOYEE' | 'ADMIN' | 'MANAGER';
   }
 
   if (statusFilter !== 'all') {

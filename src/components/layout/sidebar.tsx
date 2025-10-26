@@ -1,4 +1,4 @@
-import { Home, Users } from 'lucide-react';
+import { Building2, Home, Users } from 'lucide-react';
 
 import {
   Sidebar,
@@ -20,7 +20,7 @@ import { TermsDialog } from '@/components/legal/terms-dialog';
 
 export async function AppSidebar() {
   const session = await auth();
-  const t = await getTranslations('Menu');
+  const t = await getTranslations('app');
 
   const userData = {
     name: session?.user.name || 'User',
@@ -38,8 +38,13 @@ export async function AppSidebar() {
       ? [
           {
             title: t('users'),
-            url: '/admin/user',
+            url: '/admin/users',
             icon: Users,
+          },
+          {
+            title: t('companies'),
+            url: '/admin/company',
+            icon: Building2,
           },
         ]
       : []),

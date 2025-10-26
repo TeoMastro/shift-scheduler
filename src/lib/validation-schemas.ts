@@ -32,7 +32,7 @@ export const createUserSchema = z.object({
   last_name: z.string().min(1, 'lastNameRequired'),
   email: z.email('invalidEmail'),
   password: z.string().min(6, 'passwordMinLength'),
-  role: z.enum([Role.ADMIN, Role.USER]),
+  role: z.enum([Role.ADMIN, Role.EMPLOYEE, Role.MANAGER]),
   status: z.enum([Status.ACTIVE, Status.INACTIVE, Status.UNVERIFIED]),
 });
 
@@ -49,7 +49,7 @@ export const updateUserSchema = z.object({
       }
       return true;
     }, 'passwordMinLength'),
-  role: z.enum([Role.ADMIN, Role.USER]),
+  role: z.enum([Role.ADMIN, Role.EMPLOYEE, Role.MANAGER]),
   status: z.enum([Status.ACTIVE, Status.INACTIVE, Status.UNVERIFIED]),
 });
 
@@ -80,3 +80,11 @@ export function formatZodErrors(error: z.ZodError) {
 
   return fieldErrors;
 }
+
+export const createCompanySchema = z.object({
+  name: z.string().min(1, 'companyNameRequired').max(64, 'companyNameTooLong'),
+});
+
+export const updateCompanySchema = z.object({
+  name: z.string().min(1, 'companyNameRequired').max(64, 'companyNameTooLong'),
+});

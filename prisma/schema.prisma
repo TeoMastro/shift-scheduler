@@ -19,6 +19,18 @@ enum Status {
   UNVERIFIED
 }
 
+model Company {
+  id         Int      @id @default(autoincrement())
+  name       String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  users       User[]
+  shift_types ShiftType[]
+
+  @@map("company")
+}
+
 model User {
   id                       Int       @id @default(autoincrement())
   first_name               String?
@@ -28,16 +40,18 @@ model User {
   image                    String?
   role                     Role      @default(EMPLOYEE)
   status                   Status    @default(UNVERIFIED)
+  company_id               Int?
   email_verification_token String?   @unique
   password_reset_token     String?   @unique
   password_reset_expires   DateTime?
   created_at               DateTime  @default(now())
   updated_at               DateTime  @updatedAt
 
+  company         Company?       @relation(fields: [company_id], references: [id])
   accounts        Account[]
   assigned_shifts UserHasShift[]
 
-  @@map("users")
+  @@map("user")
 }
 
 model Account {
@@ -57,7 +71,7 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
-  @@map("accounts")
+  @@map("account")
 }
 
 model ShiftType {
@@ -65,12 +79,14 @@ model ShiftType {
   name       String
   start_time DateTime @db.Time
   end_time   DateTime @db.Time
+  company_id Int
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  shifts UserHasShift[]
+  company Company        @relation(fields: [company_id], references: [id])
+  shifts  UserHasShift[]
 
-  @@map("shift_types")
+  @@map("shift_type")
 }
 
 model UserHasShift {

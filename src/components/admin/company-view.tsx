@@ -7,9 +7,16 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Edit, Calendar, Mail, Shield, Trash2 } from 'lucide-react';
-import { UserViewProps } from '@/types/user';
-import { getStatusBadge } from '@/components/admin/user-table';
+import {
+  ArrowLeft,
+  Edit,
+  Calendar,
+  Building2,
+  Users,
+  Clock,
+  Trash2,
+} from 'lucide-react';
+import { CompanyViewProps } from '@/types/company';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,16 +28,18 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { deleteUserAction } from '@/server-actions/user';
+import { deleteCompanyAction } from '@/server-actions/company';
 import { InfoAlert } from '@/components/info-alert';
 
-export function UserView({ user }: UserViewProps) {
+export function CompanyView({ company }: CompanyViewProps) {
   const router = useRouter();
-  const t = useTranslations('app');
-
-  const statusBadge = getStatusBadge(user.status, t);
+  const t = useTranslations('App');
 
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const canDelete =
+    (company._count?.users || 0) === 0 &&
+    (company._count?.shift_types || 0) === 0;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -40,22 +49,32 @@ export function UserView({ user }: UserViewProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => router.push('/admin/user')}
+            onClick={() => router.push('/admin/company')}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-2xl font-bold">{t('viewUser')}</h1>
+          <h1 className="text-2xl font-bold">{t('viewCompany')}</h1>
         </div>
         <div className="flex gap-2">
           <Button
             variant="outline"
-            onClick={() => router.push(`/admin/user/${user.id}/update`)}
+            onClick={() => router.push(`/admin/company/${company.id}/update`)}
           >
             <Edit className="h-4 w-4" />
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="outline">
+              <Button
+                variant="outline"
+                disabled={!canDelete}
+                title={
+                  !canDelete
+                    ? (company._count?.users || 0) > 0
+                      ? t('cannotDeleteCompanyWithUsers')
+                      : t('cannotDeleteCompanyWithShiftTypes')
+                    : ''
+                }
+              >
                 <Trash2 className="h-4 w-4" />
               </Button>
             </AlertDialogTrigger>
@@ -63,8 +82,8 @@ export function UserView({ user }: UserViewProps) {
               <AlertDialogHeader>
                 <AlertDialogTitle>{t('confirmDelete')}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  {t('deleteUserConfirmation', {
-                    name: `${user.first_name} ${user.last_name}`,
+                  {t('deleteCompanyConfirmation', {
+                    name: company.name,
                   })}
                 </AlertDialogDescription>
               </AlertDialogHeader>
@@ -74,8 +93,10 @@ export function UserView({ user }: UserViewProps) {
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90 text-white"
                   onClick={async () => {
                     try {
-                      await deleteUserAction(user.id);
-                      router.push(`/admin/user?message=userDeletedSuccess`);
+                      await deleteCompanyAction(company.id);
+                      router.push(
+                        `/admin/company?message=companyDeletedSuccess`
+                      );
                     } catch (error) {
                       setDeleteError(
                         error instanceof Error
@@ -96,7 +117,7 @@ export function UserView({ user }: UserViewProps) {
       {/* InfoAlert for delete error */}
       {deleteError && <InfoAlert message={deleteError} type="error" />}
 
-      {/* User Information Card */}
+      {/* Company Information Card */}
       <Card>
         <CardContent className="space-y-6">
           {/* Basic Info */}
@@ -104,52 +125,41 @@ export function UserView({ user }: UserViewProps) {
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-muted-foreground">
-                  {t('userId')}
+                  {t('companyId')}
                 </label>
-                <p className="text-lg font-mono">#{user.id}</p>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">
-                  {t('fullName')}
-                </label>
-                <p className="text-lg">
-                  {user.first_name} {user.last_name}
-                </p>
+                <p className="text-lg font-mono">#{company.id}</p>
               </div>
 
               <div>
                 <label className="text-sm font-medium text-muted-foreground flex items-center space-x-1">
-                  <Mail className="h-4 w-4" />
-                  <span>{t('email')}</span>
+                  <Building2 className="h-4 w-4" />
+                  <span>{t('name')}</span>
                 </label>
-                <p className="text-lg">{user.email}</p>
+                <p className="text-lg font-semibold">{company.name}</p>
               </div>
             </div>
 
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-muted-foreground flex items-center space-x-1">
-                  <Shield className="h-4 w-4" />
-                  <span>{t('role')}</span>
+                  <Users className="h-4 w-4" />
+                  <span>{t('users')}</span>
                 </label>
                 <div className="mt-1">
-                  <Badge
-                    variant={user.role === 'ADMIN' ? 'default' : 'secondary'}
-                    className="text-sm"
-                  >
-                    {user.role === 'ADMIN' ? t('adminRole') : t('userRole')}
+                  <Badge variant="outline" className="text-sm">
+                    {company._count?.users || 0} {t('users')}
                   </Badge>
                 </div>
               </div>
 
               <div>
-                <label className="text-sm font-medium text-muted-foreground">
-                  {t('status')}
+                <label className="text-sm font-medium text-muted-foreground flex items-center space-x-1">
+                  <Clock className="h-4 w-4" />
+                  <span>{t('shiftTypes')}</span>
                 </label>
                 <div className="mt-1">
-                  <Badge variant={statusBadge.variant} className="text-sm">
-                    {statusBadge.text}
+                  <Badge variant="outline" className="text-sm">
+                    {company._count?.shift_types || 0} {t('shiftTypes')}
                   </Badge>
                 </div>
               </div>
@@ -166,7 +176,7 @@ export function UserView({ user }: UserViewProps) {
                 <span>{t('createdAt')}</span>
               </label>
               <p className="text-sm text-muted-foreground mt-1">
-                {new Date(user.created_at).toLocaleString()}
+                {new Date(company.created_at).toLocaleString()}
               </p>
             </div>
 
@@ -176,7 +186,7 @@ export function UserView({ user }: UserViewProps) {
                 <span>{t('updatedAt')}</span>
               </label>
               <p className="text-sm text-muted-foreground mt-1">
-                {new Date(user.updated_at).toLocaleString()}
+                {new Date(company.updated_at).toLocaleString()}
               </p>
             </div>
           </div>
