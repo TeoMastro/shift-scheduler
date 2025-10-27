@@ -1,4 +1,4 @@
-import { Building2, Clock, Home, Users } from 'lucide-react';
+import { Building2, Calendar, Clock, Home, Users } from 'lucide-react';
 
 import {
   Sidebar,
@@ -54,6 +54,15 @@ export async function AppSidebar() {
             title: t('shiftTypes'),
             url: '/shift-type',
             icon: Clock,
+          },
+        ]
+      : []),
+    ...(session?.user.role === 'MANAGER'
+      ? [
+          {
+            title: t('shifts'),
+            url: '/shift',
+            icon: Calendar,
           },
         ]
       : []),

@@ -8,7 +8,10 @@ export type SortField =
   | 'status'
   | 'created_at'
   | 'users_count'
-  | 'shift_types_count';
+  | 'shift_types_count'
+  | 'user_name'
+  | 'shift_type_name'
+  | 'date';
 
 export const SortableTableHeader = ({
   field,

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Role, Status } from '@prisma/client';
+import { Role, Status, ShiftStatus } from '@prisma/client';
 
 export const signinSchema = z.object({
   email: z.email('invalidEmail'),
@@ -147,3 +147,29 @@ export const updateShiftTypeSchema = z
     message: 'startTimeCannotEqualEndTime',
     path: ['end_time'],
   });
+
+export const createUserHasShiftSchema = z.object({
+  user_id: z.string().min(1, 'userRequired'),
+  shift_type_id: z.string().min(1, 'shiftTypeRequired'),
+  date: z.string().min(1, 'dateRequired'),
+  status: z.enum([
+    ShiftStatus.SCHEDULED,
+    ShiftStatus.CONFIRMED,
+    ShiftStatus.COMPLETED,
+    ShiftStatus.CANCELLED,
+    ShiftStatus.NO_SHOW,
+  ]),
+});
+
+export const updateUserHasShiftSchema = z.object({
+  user_id: z.string().min(1, 'userRequired'),
+  shift_type_id: z.string().min(1, 'shiftTypeRequired'),
+  date: z.string().min(1, 'dateRequired'),
+  status: z.enum([
+    ShiftStatus.SCHEDULED,
+    ShiftStatus.CONFIRMED,
+    ShiftStatus.COMPLETED,
+    ShiftStatus.CANCELLED,
+    ShiftStatus.NO_SHOW,
+  ]),
+});
