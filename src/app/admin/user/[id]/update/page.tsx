@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { UserForm } from '@/components/admin/user-form';
 import { PageProps } from '@/types/user';
 import { getUserById } from '@/server-actions/user';
+import { getAllCompanies } from '@/server-actions/company';
 
 export default async function UpdateUserPage({ params }: PageProps) {
   const resolvedParams = await params;
@@ -17,9 +18,11 @@ export default async function UpdateUserPage({ params }: PageProps) {
     notFound();
   }
 
+  const companies = await getAllCompanies();
+
   return (
     <div className="container mx-auto py-6">
-      <UserForm user={user} mode="update" />
+      <UserForm user={user} mode="update" companies={companies} />
     </div>
   );
 }

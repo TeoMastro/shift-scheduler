@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { createUserAction, updateUserAction } from '@/server-actions/user';
 import { Button } from '@/components/ui/button';
@@ -18,8 +18,11 @@ import { UserFormProps, UserFormState } from '@/types/user';
 import { Role, Status } from '@prisma/client';
 import { InfoAlert } from '../info-alert';
 
-export function UserForm({ user, mode }: UserFormProps) {
+export function UserForm({ user, mode, companies = [] }: UserFormProps) {
   const t = useTranslations('app');
+  const [selectedRole, setSelectedRole] = useState<Role>(
+    user?.role || Role.EMPLOYEE
+  );
 
   const initialState: UserFormState = {
     success: false,
@@ -31,6 +34,7 @@ export function UserForm({ user, mode }: UserFormProps) {
       password: '',
       role: user?.role || Role.EMPLOYEE,
       status: user?.status || Status.ACTIVE,
+      company_id: user?.company_id?.toString() ?? '',
     },
     globalError: null,
   };
@@ -142,7 +146,11 @@ export function UserForm({ user, mode }: UserFormProps) {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="role">{t('role')}</Label>
-              <Select name="role" defaultValue={state.formData.role}>
+              <Select
+                name="role"
+                defaultValue={state.formData.role}
+                onValueChange={(value) => setSelectedRole(value as Role)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder={t('selectRole')} />
                 </SelectTrigger>
@@ -182,6 +190,34 @@ export function UserForm({ user, mode }: UserFormProps) {
               )}
             </div>
           </div>
+
+          {selectedRole !== Role.ADMIN && (
+            <div className="space-y-2">
+              <Label htmlFor="company_id">{t('company')}</Label>
+              <Select
+                name="company_id"
+                defaultValue={state.formData.company_id || undefined}
+              >
+                <SelectTrigger
+                  className={state.errors.company_id ? 'border-red-500' : ''}
+                >
+                  <SelectValue placeholder={t('selectCompany')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {companies.map((company) => (
+                    <SelectItem key={company.id} value={company.id.toString()}>
+                      {company.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {state.errors.company_id && (
+                <p className="text-sm text-red-500">
+                  {getErrorMessage('company_id')}
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="flex gap-4">
             <Button type="submit">

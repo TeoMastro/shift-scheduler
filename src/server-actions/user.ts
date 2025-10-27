@@ -44,6 +44,7 @@ export async function createUserAction(
       password: formData.get('password')?.toString() ?? '',
       role: (formData.get('role')?.toString() as Role) ?? Role.EMPLOYEE,
       status: (formData.get('status')?.toString() as Status) ?? Status.ACTIVE,
+      company_id: formData.get('company_id')?.toString() ?? '',
     };
 
     const parsed = createUserSchema.safeParse(data);
@@ -67,7 +68,11 @@ export async function createUserAction(
       return {
         success: false,
         errors: {},
-        formData: { ...parsed.data, password: '' },
+        formData: {
+          ...parsed.data,
+          password: '',
+          company_id: parsed.data.company_id || '',
+        },
         globalError: 'userAlreadyExists',
       };
     }
@@ -82,6 +87,10 @@ export async function createUserAction(
         password: hashedPassword,
         role: parsed.data.role,
         status: parsed.data.status,
+        company_id:
+          parsed.data.company_id && parsed.data.company_id !== ''
+            ? parseInt(parsed.data.company_id)
+            : null,
       },
     });
 
@@ -108,6 +117,7 @@ export async function createUserAction(
         password: '',
         role: (formData.get('role')?.toString() as Role) ?? Role.EMPLOYEE,
         status: (formData.get('status')?.toString() as Status) ?? Status.ACTIVE,
+        company_id: formData.get('company_id')?.toString() ?? '',
       },
       globalError: 'unexpectedError',
     };
@@ -130,6 +140,7 @@ export async function updateUserAction(
       password: formData.get('password')?.toString() ?? '',
       role: (formData.get('role')?.toString() as Role) ?? Role.EMPLOYEE,
       status: (formData.get('status')?.toString() as Status) ?? Status.ACTIVE,
+      company_id: formData.get('company_id')?.toString() ?? '',
     };
 
     const parsed = updateUserSchema.safeParse(data);
@@ -153,7 +164,11 @@ export async function updateUserAction(
       return {
         success: false,
         errors: {},
-        formData: { ...parsed.data, password: '' },
+        formData: {
+          ...parsed.data,
+          password: '',
+          company_id: parsed.data.company_id || '',
+        },
         globalError: 'userNotFound',
       };
     }
@@ -169,7 +184,11 @@ export async function updateUserAction(
       return {
         success: false,
         errors: {},
-        formData: { ...parsed.data, password: '' },
+        formData: {
+          ...parsed.data,
+          password: '',
+          company_id: parsed.data.company_id || '',
+        },
         globalError: 'emailAlreadyTaken',
       };
     }
@@ -181,12 +200,17 @@ export async function updateUserAction(
       role: Role;
       status: Status;
       password?: string;
+      company_id: number | null;
     } = {
       first_name: parsed.data.first_name.trim(),
       last_name: parsed.data.last_name.trim(),
       email: trimmedEmail,
       role: parsed.data.role,
       status: parsed.data.status,
+      company_id:
+        parsed.data.company_id && parsed.data.company_id !== ''
+          ? parseInt(parsed.data.company_id)
+          : null,
     };
 
     if (parsed.data.password && parsed.data.password.trim() !== '') {
@@ -221,6 +245,7 @@ export async function updateUserAction(
         password: '',
         role: (formData.get('role')?.toString() as Role) ?? Role.EMPLOYEE,
         status: (formData.get('status')?.toString() as Status) ?? Status.ACTIVE,
+        company_id: formData.get('company_id')?.toString() ?? '',
       },
       globalError: 'unexpectedError',
     };
@@ -284,6 +309,7 @@ export async function getUserById(userId: number) {
         email: true,
         role: true,
         status: true,
+        company_id: true,
         created_at: true,
         updated_at: true,
       },

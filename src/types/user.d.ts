@@ -7,6 +7,7 @@ export type User = {
   email: string;
   role: Role;
   status: Status;
+  company_id: number | null;
   created_at: Date;
   updated_at: Date;
   password?: string | null;
@@ -26,6 +27,7 @@ export type UserFormState = {
     password: string;
     role: Role;
     status: Status;
+    company_id: string;
   };
   globalError: string | null;
 };
@@ -66,6 +68,7 @@ export type UserFormProps = {
     | 'email_verified_at'
   > | null;
   mode: 'create' | 'update';
+  companies?: { id: number; name: string }[];
 };
 
 export type UserViewProps = {

@@ -304,3 +304,28 @@ export async function getAllCompaniesForExport(
   const result = await fetchCompanies({ ...params, paginate: false });
   return (result as GetCompaniesResultWithoutPagination).companies;
 }
+
+export async function getAllCompanies() {
+  try {
+    await checkAdminAuth();
+
+    const companies = await prisma.company.findMany({
+      select: {
+        id: true,
+        name: true,
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
+
+    return companies;
+  } catch (error) {
+    logger.error('Error fetching all companies', {
+      error: (error as Error).message,
+      stack: (error as Error).stack,
+      action: 'getAllCompanies',
+    });
+    throw error;
+  }
+}

@@ -27,31 +27,61 @@ export const signupSchema = z
     path: ['confirmPassword'],
   });
 
-export const createUserSchema = z.object({
-  first_name: z.string().min(1, 'firstNameRequired'),
-  last_name: z.string().min(1, 'lastNameRequired'),
-  email: z.email('invalidEmail'),
-  password: z.string().min(6, 'passwordMinLength'),
-  role: z.enum([Role.ADMIN, Role.EMPLOYEE, Role.MANAGER]),
-  status: z.enum([Status.ACTIVE, Status.INACTIVE, Status.UNVERIFIED]),
-});
-
-export const updateUserSchema = z.object({
-  first_name: z.string().min(1, 'firstNameRequired'),
-  last_name: z.string().min(1, 'lastNameRequired'),
-  email: z.email('invalidEmail'),
-  password: z
-    .string()
-    .optional()
-    .refine((val) => {
-      if (val && val.length > 0) {
-        return val.length >= 6;
+export const createUserSchema = z
+  .object({
+    first_name: z.string().min(1, 'firstNameRequired'),
+    last_name: z.string().min(1, 'lastNameRequired'),
+    email: z.email('invalidEmail'),
+    password: z.string().min(6, 'passwordMinLength'),
+    role: z.enum([Role.ADMIN, Role.EMPLOYEE, Role.MANAGER]),
+    status: z.enum([Status.ACTIVE, Status.INACTIVE, Status.UNVERIFIED]),
+    company_id: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      // If role is not ADMIN, company_id is required
+      if (data.role !== Role.ADMIN) {
+        return !!(data.company_id && data.company_id.trim() !== '');
       }
       return true;
-    }, 'passwordMinLength'),
-  role: z.enum([Role.ADMIN, Role.EMPLOYEE, Role.MANAGER]),
-  status: z.enum([Status.ACTIVE, Status.INACTIVE, Status.UNVERIFIED]),
-});
+    },
+    {
+      message: 'companyRequired',
+      path: ['company_id'],
+    }
+  );
+
+export const updateUserSchema = z
+  .object({
+    first_name: z.string().min(1, 'firstNameRequired'),
+    last_name: z.string().min(1, 'lastNameRequired'),
+    email: z.email('invalidEmail'),
+    password: z
+      .string()
+      .optional()
+      .refine((val) => {
+        if (val && val.length > 0) {
+          return val.length >= 6;
+        }
+        return true;
+      }, 'passwordMinLength'),
+    role: z.enum([Role.ADMIN, Role.EMPLOYEE, Role.MANAGER]),
+    status: z.enum([Status.ACTIVE, Status.INACTIVE, Status.UNVERIFIED]),
+    company_id: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      // If role is not ADMIN, company_id is required
+      if (data.role !== Role.ADMIN) {
+        return !!(data.company_id && data.company_id.trim() !== '');
+      }
+      return true;
+    },
+    {
+      message: 'companyRequired',
+      path: ['company_id'],
+    }
+  );
 
 export const forgotPasswordSchema = z.object({
   email: z.email('invalidEmail').min(1, 'emailRequired'),
@@ -88,3 +118,32 @@ export const createCompanySchema = z.object({
 export const updateCompanySchema = z.object({
   name: z.string().min(1, 'companyNameRequired').max(64, 'companyNameTooLong'),
 });
+
+export const createShiftTypeSchema = z
+  .object({
+    name: z
+      .string()
+      .min(1, 'shiftTypeNameRequired')
+      .max(100, 'shiftTypeNameTooLong'),
+    start_time: z.string().min(1, 'startTimeRequired'),
+    end_time: z.string().min(1, 'endTimeRequired'),
+    company_id: z.string().min(1, 'companyRequired'),
+  })
+  .refine((data) => data.start_time !== data.end_time, {
+    message: 'startTimeCannotEqualEndTime',
+    path: ['end_time'],
+  });
+
+export const updateShiftTypeSchema = z
+  .object({
+    name: z
+      .string()
+      .min(1, 'shiftTypeNameRequired')
+      .max(100, 'shiftTypeNameTooLong'),
+    start_time: z.string().min(1, 'startTimeRequired'),
+    end_time: z.string().min(1, 'endTimeRequired'),
+  })
+  .refine((data) => data.start_time !== data.end_time, {
+    message: 'startTimeCannotEqualEndTime',
+    path: ['end_time'],
+  });
