@@ -27,6 +27,7 @@ model Company {
 
   users       User[]
   shift_types ShiftType[]
+  skills      Skill[]
 
   @@map("company")
 }
@@ -50,6 +51,7 @@ model User {
   company         Company?       @relation(fields: [company_id], references: [id])
   accounts        Account[]
   assigned_shifts UserHasShift[]
+  skills          UserHasSkill[]
 
   @@map("user")
 }
@@ -111,4 +113,31 @@ enum ShiftStatus {
   COMPLETED
   CANCELLED
   NO_SHOW
+}
+
+model Skill {
+  id         Int      @id @default(autoincrement())
+  name       String
+  company_id Int
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  company Company        @relation(fields: [company_id], references: [id])
+  users   UserHasSkill[]
+
+  @@unique([name, company_id])
+  @@map("skill")
+}
+
+model UserHasSkill {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  skill_id   Int
+  created_at DateTime @default(now())
+
+  user  User  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  skill Skill @relation(fields: [skill_id], references: [id])
+
+  @@unique([user_id, skill_id])
+  @@map("user_has_skill")
 }

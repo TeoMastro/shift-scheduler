@@ -173,3 +173,13 @@ export const updateUserHasShiftSchema = z.object({
     ShiftStatus.NO_SHOW,
   ]),
 });
+
+export const createSkillSchema = z.object({
+  name: z.string().min(1, 'skillNameRequired').max(100, 'skillNameTooLong'),
+  company_id: z.string().optional(),
+});
+
+export const updateSkillSchema = z.object({
+  name: z.string().min(1, 'skillNameRequired').max(100, 'skillNameTooLong'),
+  company_id: z.string().optional(),
+});

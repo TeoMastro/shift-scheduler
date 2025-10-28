@@ -1,4 +1,4 @@
-import { Building2, Calendar, Clock, Home, Users } from 'lucide-react';
+import { Award, Building2, Calendar, Clock, Home, Users } from 'lucide-react';
 
 import {
   Sidebar,
@@ -63,6 +63,11 @@ export async function AppSidebar() {
             title: t('shifts'),
             url: '/shift',
             icon: Calendar,
+          },
+          {
+            title: t('skills'),
+            url: '/skill',
+            icon: Award,
           },
         ]
       : []),

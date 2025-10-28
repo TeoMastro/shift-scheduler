@@ -487,18 +487,12 @@ async function fetchShiftTypes(
     whereClause.company_id = userCompanyId;
   }
 
-  const orderBy: Record<
-    string,
-    | 'asc'
-    | 'desc'
-    | { _count: 'asc' | 'desc' }
-    | { company: { name: 'asc' | 'desc' } }
-  > = {};
+  const orderBy: any = {};
 
   if (sortField === 'shifts_count') {
     orderBy.shifts = { _count: sortDirection };
   } else if (sortField === 'company') {
-    orderBy.company = { company: { name: sortDirection } } as any;
+    orderBy.company = { name: sortDirection };
   } else {
     orderBy[sortField] = sortDirection;
   }
