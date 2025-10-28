@@ -17,6 +17,7 @@ import {
 } from '@/lib/validation-schemas';
 import logger from '@/lib/logger';
 import { auth } from '@/lib/auth';
+import { timeToDate } from '@/lib/time-utils';
 
 async function checkShiftTypeAccess(
   sessionUserId: number,
@@ -178,23 +179,9 @@ export async function createShiftTypeAction(
 
     const trimmedName = parsed.data.name.trim();
 
-    // Parse time strings to Date objects for storage
-    const startTimeParts = parsed.data.start_time.split(':');
-    const endTimeParts = parsed.data.end_time.split(':');
-    const startTimeDate = new Date(
-      1970,
-      0,
-      1,
-      parseInt(startTimeParts[0]),
-      parseInt(startTimeParts[1] || '0')
-    );
-    const endTimeDate = new Date(
-      1970,
-      0,
-      1,
-      parseInt(endTimeParts[0]),
-      parseInt(endTimeParts[1] || '0')
-    );
+    // Parse time strings to Date objects for storage (time-only)
+    const startTimeDate = timeToDate(parsed.data.start_time);
+    const endTimeDate = timeToDate(parsed.data.end_time);
 
     const newShiftType = await prisma.shiftType.create({
       data: {
@@ -298,23 +285,9 @@ export async function updateShiftTypeAction(
 
     const trimmedName = parsed.data.name.trim();
 
-    // Parse time strings to Date objects for storage
-    const startTimeParts = parsed.data.start_time.split(':');
-    const endTimeParts = parsed.data.end_time.split(':');
-    const startTimeDate = new Date(
-      1970,
-      0,
-      1,
-      parseInt(startTimeParts[0]),
-      parseInt(startTimeParts[1] || '0')
-    );
-    const endTimeDate = new Date(
-      1970,
-      0,
-      1,
-      parseInt(endTimeParts[0]),
-      parseInt(endTimeParts[1] || '0')
-    );
+    // Parse time strings to Date objects for storage (time-only)
+    const startTimeDate = timeToDate(parsed.data.start_time);
+    const endTimeDate = timeToDate(parsed.data.end_time);
 
     await prisma.shiftType.update({
       where: { id: shiftTypeId },

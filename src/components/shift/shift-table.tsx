@@ -32,7 +32,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Pencil, Trash2, Plus, Eye, X, Download } from 'lucide-react';
+import { Pencil, Trash2, Plus, Eye, X, Download, Calendar } from 'lucide-react';
 import { useDebouncedCallback } from 'use-debounce';
 import { Pagination } from '../layout/pagination';
 import {
@@ -316,6 +316,13 @@ export function ShiftsTable({
           >
             <Download className="h-4 w-4" />
             .xlsx
+          </Button>
+          <Button
+            onClick={() => router.push('/shift/auto-assign')}
+            variant="outline"
+          >
+            <Calendar className="h-4 w-4" />
+            <div className="hidden md:block">{t('autoAssign')}</div>
           </Button>
           <Button onClick={() => router.push('/shift/create')}>
             <Plus className="h-4 w-4" />

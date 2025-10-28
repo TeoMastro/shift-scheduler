@@ -18,6 +18,7 @@ import {
 import { auth } from '@/lib/auth';
 import logger from '@/lib/logger';
 import { ShiftStatus } from '@prisma/client';
+import { formatTime } from '@/lib/time-utils';
 
 async function checkShiftAccess(sessionUserId: number, sessionRole: string) {
   const user = await prisma.user.findUnique({
@@ -879,6 +880,73 @@ export async function getUserShiftsForCalendar() {
       error: (error as Error).message,
       stack: (error as Error).stack,
       action: 'getUserShiftsForCalendar',
+    });
+    throw error;
+  }
+}
+
+export async function submitAutoAssignAction(data: {
+  start_date: string;
+  end_date: string;
+  company_id: number;
+}) {
+  try {
+    const session = await auth();
+    if (!session) {
+      throw new Error('Unauthorized');
+    }
+
+    // Get all employees from the company
+    const employees = await prisma.user.findMany({
+      where: {
+        company_id: data.company_id,
+        role: 'EMPLOYEE',
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    // Get all shift types from the company
+    const shiftTypesData = await prisma.shiftType.findMany({
+      where: {
+        company_id: data.company_id,
+      },
+      select: {
+        id: true,
+        name: true,
+        start_time: true,
+        end_time: true,
+      },
+    });
+
+    // Format shift types with time-only fields
+    const shiftTypes = shiftTypesData.map((st) => ({
+      id: st.id,
+      name: st.name,
+      start_time: formatTime(st.start_time),
+      end_time: formatTime(st.end_time),
+    }));
+
+    // Create JSON payload
+    const payload = {
+      user_ids: employees.map((emp) => emp.id),
+      shift_types: shiftTypes,
+      start_date: data.start_date,
+      end_date: data.end_date,
+    };
+
+    logger.info('Auto-assign payload generated', {
+      userId: session.user.id,
+      payload,
+    });
+
+    return payload;
+  } catch (error) {
+    logger.error('Error generating auto-assign payload', {
+      error: (error as Error).message,
+      stack: (error as Error).stack,
+      action: 'submitAutoAssignAction',
     });
     throw error;
   }

@@ -11,7 +11,9 @@ export type SortField =
   | 'shift_types_count'
   | 'user_name'
   | 'shift_type_name'
-  | 'date';
+  | 'date'
+  | 'company'
+  | 'shifts_count';
 
 export const SortableTableHeader = ({
   field,

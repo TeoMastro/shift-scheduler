@@ -216,7 +216,8 @@ export function ShiftTypesTable({
     });
   }, [updateUrl]);
 
-  const hasActiveFilters = searchTermLocal !== '' || companyFilterLocal !== 'all';
+  const hasActiveFilters =
+    searchTermLocal !== '' || companyFilterLocal !== 'all';
 
   // Get unique companies from shift types for filter
   const companies = Array.from(
@@ -276,7 +277,10 @@ export function ShiftTypesTable({
           className="w-full md:max-w-sm"
         />
         {userRole === Role.ADMIN && (
-          <Select value={companyFilterLocal} onValueChange={handleCompanyFilterChange}>
+          <Select
+            value={companyFilterLocal}
+            onValueChange={handleCompanyFilterChange}
+          >
             <SelectTrigger className="w-full md:w-[200px]">
               <SelectValue placeholder={t('allCompanies')} />
             </SelectTrigger>
@@ -369,9 +373,7 @@ export function ShiftTypesTable({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() =>
-                        router.push(`/shift-type/${shiftType.id}`)
-                      }
+                      onClick={() => router.push(`/shift-type/${shiftType.id}`)}
                       disabled={isPending}
                       title={t('viewShiftType')}
                     >
@@ -455,4 +457,3 @@ export function ShiftTypesTable({
     </div>
   );
 }
-

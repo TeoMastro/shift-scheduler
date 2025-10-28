@@ -3,8 +3,8 @@ import { Role } from '@prisma/client';
 export type ShiftType = {
   id: number;
   name: string;
-  start_time: Date;
-  end_time: Date;
+  start_time: Date; // Time-only (HH:mm), date is 1970-01-01
+  end_time: Date; // Time-only (HH:mm), date is 1970-01-01
   company_id: number;
   created_at: Date;
   updated_at: Date;

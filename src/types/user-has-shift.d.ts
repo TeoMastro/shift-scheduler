@@ -64,7 +64,10 @@ export type UserHasShiftsPageProps = {
 };
 
 export type UserHasShiftFormProps = {
-  shift?: Omit<UserHasShift, 'created_at' | 'updated_at' | 'user' | 'shift_type'> | null;
+  shift?: Omit<
+    UserHasShift,
+    'created_at' | 'updated_at' | 'user' | 'shift_type'
+  > | null;
   mode: 'create' | 'update';
 };
 
@@ -91,4 +94,3 @@ export type UserHasShiftsTableProps = {
   userRole: 'ADMIN' | 'MANAGER';
   userCompanyId: number | null;
 };
-
