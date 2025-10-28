@@ -1,13 +1,16 @@
 import { auth } from '@/lib/auth';
 import { redirect, notFound } from 'next/navigation';
 import { UserView } from '@/components/admin/user-view';
-import { getUserById } from '@/server-actions/user';
+import { getUserById, getUserSkills } from '@/server-actions/user';
 import { PageProps } from '@/types/user';
 
 export default async function ViewUserPage({ params }: PageProps) {
   const session = await auth();
 
-  if (!session || session.user.role !== 'ADMIN') {
+  if (
+    !session ||
+    (session.user.role !== 'ADMIN' && session.user.role !== 'MANAGER')
+  ) {
     redirect('/dashboard');
   }
 
@@ -18,15 +21,22 @@ export default async function ViewUserPage({ params }: PageProps) {
     notFound();
   }
 
-  const user = await getUserById(userId);
+  try {
+    const user = await getUserById(userId);
 
-  if (!user) {
+    if (!user) {
+      notFound();
+    }
+
+    // Fetch user's skills
+    const userSkills = await getUserSkills(userId);
+
+    return (
+      <div className="container mx-auto py-6">
+        <UserView user={{ ...user, skills: userSkills }} />
+      </div>
+    );
+  } catch (error) {
     notFound();
   }
-
-  return (
-    <div className="container mx-auto py-6">
-      <UserView user={user} />
-    </div>
-  );
 }

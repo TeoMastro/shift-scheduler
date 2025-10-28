@@ -48,6 +48,15 @@ export async function AppSidebar() {
           },
         ]
       : []),
+    ...(session?.user.role === 'MANAGER'
+      ? [
+          {
+            title: t('users'),
+            url: '/admin/user',
+            icon: Users,
+          },
+        ]
+      : []),
     ...(session?.user.role === 'ADMIN' || session?.user.role === 'MANAGER'
       ? [
           {

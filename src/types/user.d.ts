@@ -1,5 +1,11 @@
 import { Role, Status } from '@prisma/client';
 
+export type Skill = {
+  id: number;
+  name: string;
+  company_id: number;
+};
+
 export type User = {
   id: number;
   first_name: string | null;
@@ -15,6 +21,7 @@ export type User = {
   email_verification_token?: string | null;
   password_reset_token?: string | null;
   password_reset_expires?: Date | null;
+  skills?: Skill[];
 };
 
 export type UserFormState = {
@@ -59,14 +66,16 @@ export type AdminUsersPageProps = {
 };
 
 export type UserFormProps = {
-  user?: Omit<
-    User,
-    | 'created_at'
-    | 'updated_at'
-    | 'password'
-    | 'email_verification_token'
-    | 'email_verified_at'
-  > | null;
+  user?:
+    | (Omit<
+        User,
+        | 'created_at'
+        | 'updated_at'
+        | 'password'
+        | 'email_verification_token'
+        | 'email_verified_at'
+      > & { skills?: Skill[] })
+    | null;
   mode: 'create' | 'update';
   companies?: { id: number; name: string }[];
 };

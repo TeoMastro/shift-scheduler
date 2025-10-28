@@ -28,6 +28,7 @@ export default auth(async (req) => {
   if (
     req.nextUrl.pathname.startsWith('/admin') &&
     session?.user?.role !== 'ADMIN' &&
+    session?.user?.role !== 'MANAGER' &&
     !!session?.user
   ) {
     return NextResponse.redirect(new URL('/404', req.url));

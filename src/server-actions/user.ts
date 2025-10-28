@@ -20,6 +20,19 @@ import {
 import { Role, Status } from '@prisma/client';
 import logger from '@/lib/logger';
 
+export async function checkUserAccess() {
+  const session = await auth();
+
+  if (
+    !session ||
+    (session.user.role !== 'ADMIN' && session.user.role !== 'MANAGER')
+  ) {
+    throw new Error('Unauthorized');
+  }
+
+  return session;
+}
+
 export async function checkAdminAuth() {
   const session = await auth();
 
@@ -35,7 +48,16 @@ export async function createUserAction(
   formData: FormData
 ): Promise<UserFormState> {
   try {
-    const session = await checkAdminAuth();
+    const session = await checkUserAccess();
+
+    // Get the current user's company_id if they are a manager
+    const currentUser = await prisma.user.findUnique({
+      where: { id: +session.user.id },
+      select: { company_id: true, role: true },
+    });
+
+    const managerCompanyId =
+      session.user.role === 'MANAGER' ? currentUser?.company_id : null;
 
     const data = {
       first_name: formData.get('first_name')?.toString() ?? '',
@@ -46,6 +68,31 @@ export async function createUserAction(
       status: (formData.get('status')?.toString() as Status) ?? Status.ACTIVE,
       company_id: formData.get('company_id')?.toString() ?? '',
     };
+
+    // For managers, force company_id to their company and restrict role to EMPLOYEE
+    if (session.user.role === 'MANAGER') {
+      if (!managerCompanyId) {
+        return {
+          success: false,
+          errors: {},
+          formData: { ...data, password: '' },
+          globalError: 'managerMustBelongToCompany',
+        };
+      }
+
+      // Managers can only create employees
+      if (data.role !== Role.EMPLOYEE) {
+        return {
+          success: false,
+          errors: {},
+          formData: { ...data, password: '' },
+          globalError: 'managersCanOnlyCreateEmployees',
+        };
+      }
+
+      // Force manager's company
+      data.company_id = managerCompanyId.toString();
+    }
 
     const parsed = createUserSchema.safeParse(data);
 
@@ -79,6 +126,12 @@ export async function createUserAction(
 
     const hashedPassword = await bcrypt.hash(parsed.data.password, 12);
 
+    // Get skill IDs from form data
+    const skillIds = formData
+      .getAll('skill_ids')
+      .map((id) => parseInt(id.toString()))
+      .filter((id) => !isNaN(id));
+
     const newUser = await prisma.user.create({
       data: {
         first_name: parsed.data.first_name.trim(),
@@ -91,15 +144,23 @@ export async function createUserAction(
           parsed.data.company_id && parsed.data.company_id !== ''
             ? parseInt(parsed.data.company_id)
             : null,
+        skills:
+          skillIds.length > 0
+            ? {
+                create: skillIds.map((skillId) => ({
+                  skill_id: skillId,
+                })),
+              }
+            : undefined,
       },
     });
 
     logger.info('User created successfully', {
-      adminId: session.user.id,
+      userId: session.user.id,
       createdUserId: newUser.id,
     });
 
-    revalidatePath('/admin/users');
+    revalidatePath('/admin/user');
   } catch (error) {
     logger.error('Unexpected error during user creation', {
       error: (error as Error).message,
@@ -131,7 +192,16 @@ export async function updateUserAction(
   formData: FormData
 ): Promise<UserFormState> {
   try {
-    const session = await checkAdminAuth();
+    const session = await checkUserAccess();
+
+    // Get the current user's company_id if they are a manager
+    const currentUser = await prisma.user.findUnique({
+      where: { id: +session.user.id },
+      select: { company_id: true, role: true },
+    });
+
+    const managerCompanyId =
+      session.user.role === 'MANAGER' ? currentUser?.company_id : null;
 
     const data = {
       first_name: formData.get('first_name')?.toString() ?? '',
@@ -142,6 +212,43 @@ export async function updateUserAction(
       status: (formData.get('status')?.toString() as Status) ?? Status.ACTIVE,
       company_id: formData.get('company_id')?.toString() ?? '',
     };
+
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!existingUser) {
+      return {
+        success: false,
+        errors: {},
+        formData: {
+          ...data,
+          password: '',
+          company_id: data.company_id || '',
+        },
+        globalError: 'userNotFound',
+      };
+    }
+
+    // Managers can only update users in their company and cannot change their role to anything other than EMPLOYEE
+    if (session.user.role === 'MANAGER') {
+      if (!managerCompanyId || existingUser.company_id !== managerCompanyId) {
+        throw new Error('Unauthorized');
+      }
+
+      // Managers cannot change user's company
+      data.company_id = managerCompanyId.toString();
+
+      // Managers cannot elevate users to MANAGER or ADMIN
+      if (data.role !== Role.EMPLOYEE) {
+        return {
+          success: false,
+          errors: {},
+          formData: { ...data, password: '' },
+          globalError: 'managersCanOnlySetEmployeeRole',
+        };
+      }
+    }
 
     const parsed = updateUserSchema.safeParse(data);
 
@@ -155,23 +262,6 @@ export async function updateUserAction(
     }
 
     const trimmedEmail = parsed.data.email.trim().toLowerCase();
-
-    const existingUser = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!existingUser) {
-      return {
-        success: false,
-        errors: {},
-        formData: {
-          ...parsed.data,
-          password: '',
-          company_id: parsed.data.company_id || '',
-        },
-        globalError: 'userNotFound',
-      };
-    }
 
     const emailTaken = await prisma.user.findFirst({
       where: {
@@ -217,17 +307,31 @@ export async function updateUserAction(
       updateData.password = await bcrypt.hash(parsed.data.password, 12);
     }
 
+    // Get skill IDs from form data
+    const skillIds = formData
+      .getAll('skill_ids')
+      .map((id) => parseInt(id.toString()))
+      .filter((id) => !isNaN(id));
+
     await prisma.user.update({
       where: { id: userId },
-      data: updateData,
+      data: {
+        ...updateData,
+        skills: {
+          deleteMany: {},
+          create: skillIds.map((skillId) => ({
+            skill_id: skillId,
+          })),
+        },
+      },
     });
 
     logger.info('User updated successfully', {
-      adminId: session.user.id,
+      userId: session.user.id,
       updatedUserId: userId,
     });
 
-    revalidatePath('/admin/users');
+    revalidatePath('/admin/user');
   } catch (error) {
     logger.error('Unexpected error during user update', {
       error: (error as Error).message,
@@ -255,7 +359,7 @@ export async function updateUserAction(
 
 export async function deleteUserAction(userId: number) {
   try {
-    const session = await checkAdminAuth();
+    const session = await checkUserAccess();
 
     if (+session.user.id === userId) {
       throw new Error('Cannot delete own account');
@@ -269,16 +373,31 @@ export async function deleteUserAction(userId: number) {
       throw new Error('User not found');
     }
 
+    // Managers can only delete users in their company
+    if (session.user.role === 'MANAGER') {
+      const currentUser = await prisma.user.findUnique({
+        where: { id: +session.user.id },
+        select: { company_id: true },
+      });
+
+      if (
+        !currentUser?.company_id ||
+        existingUser.company_id !== currentUser.company_id
+      ) {
+        throw new Error('Unauthorized');
+      }
+    }
+
     await prisma.user.delete({
       where: { id: userId },
     });
 
     logger.info('User deleted successfully', {
-      adminId: session.user.id,
+      userId: session.user.id,
       deletedUserId: userId,
     });
 
-    revalidatePath('/admin/users');
+    revalidatePath('/admin/user');
 
     return { success: true };
   } catch (error) {
@@ -294,7 +413,7 @@ export async function deleteUserAction(userId: number) {
 
 export async function getUserById(userId: number) {
   try {
-    await checkAdminAuth();
+    const session = await checkUserAccess();
 
     if (isNaN(userId)) {
       return false;
@@ -319,6 +438,21 @@ export async function getUserById(userId: number) {
       return false;
     }
 
+    // Managers can only view users in their company
+    if (session.user.role === 'MANAGER') {
+      const currentUser = await prisma.user.findUnique({
+        where: { id: +session.user.id },
+        select: { company_id: true },
+      });
+
+      if (
+        !currentUser?.company_id ||
+        user.company_id !== currentUser.company_id
+      ) {
+        throw new Error('Unauthorized');
+      }
+    }
+
     return user;
   } catch (error) {
     logger.error('Error fetching user by ID', {
@@ -331,6 +465,20 @@ export async function getUserById(userId: number) {
 }
 
 async function fetchUsers(params: GetUsersParams & { paginate?: boolean }) {
+  // Get current user's company if they are a manager
+  const session = await auth();
+  if (!session) {
+    throw new Error('Unauthorized');
+  }
+
+  const currentUser = await prisma.user.findUnique({
+    where: { id: +session.user.id },
+    select: { company_id: true, role: true },
+  });
+
+  const managerCompanyId =
+    session.user.role === 'MANAGER' ? currentUser?.company_id : null;
+
   const page = parseInt(params.page || '1');
   const limit = parseInt(params.limit || '10');
   const search = params.search || '';
@@ -342,15 +490,12 @@ async function fetchUsers(params: GetUsersParams & { paginate?: boolean }) {
 
   const offset = (page - 1) * limit;
 
-  const whereClause: {
-    OR?: Array<{
-      first_name?: { contains: string; mode: 'insensitive' };
-      last_name?: { contains: string; mode: 'insensitive' };
-      email?: { contains: string; mode: 'insensitive' };
-    }>;
-    role?: Role;
-    status?: Status;
-  } = {};
+  const whereClause: any = {};
+
+  // Managers can only see users from their company
+  if (managerCompanyId !== null) {
+    whereClause.company_id = managerCompanyId;
+  }
 
   if (search) {
     whereClause.OR = [
@@ -431,4 +576,77 @@ export async function getAllUsersForExport(
 ): Promise<User[]> {
   const result = await fetchUsers({ ...params, paginate: false });
   return (result as GetUsersResultWithoutPagination).users;
+}
+
+export async function getSkillsForCompany(companyId: number) {
+  try {
+    await checkUserAccess();
+
+    const skills = await prisma.skill.findMany({
+      where: { company_id: companyId },
+      select: {
+        id: true,
+        name: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    return skills;
+  } catch (error) {
+    logger.error('Error fetching skills for company', {
+      error: (error as Error).message,
+      action: 'getSkillsForCompany',
+    });
+    return [];
+  }
+}
+
+export async function getUserSkills(userId: number) {
+  try {
+    const session = await checkUserAccess();
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        skills: {
+          include: {
+            skill: {
+              select: {
+                id: true,
+                name: true,
+                company_id: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      return [];
+    }
+
+    // Managers can only view skills of users in their company
+    if (session.user.role === 'MANAGER') {
+      const currentUser = await prisma.user.findUnique({
+        where: { id: +session.user.id },
+        select: { company_id: true },
+      });
+
+      if (
+        !currentUser?.company_id ||
+        user.company_id !== currentUser.company_id
+      ) {
+        throw new Error('Unauthorized');
+      }
+    }
+
+    return user.skills.map((uhs) => uhs.skill);
+  } catch (error) {
+    logger.error('Error fetching user skills', {
+      error: (error as Error).message,
+      action: 'getUserSkills',
+    });
+    return [];
+  }
 }

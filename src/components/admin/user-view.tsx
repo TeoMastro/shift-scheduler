@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Edit, Calendar, Mail, Shield, Trash2 } from 'lucide-react';
+import { ArrowLeft, Edit, Calendar, Mail, Shield, Trash2, Award } from 'lucide-react';
 import { UserViewProps } from '@/types/user';
 import { getStatusBadge, getRoleBadge } from '@/components/admin/user-table';
 import {
@@ -155,6 +155,26 @@ export function UserView({ user }: UserViewProps) {
           </div>
 
           <Separator />
+
+          {/* Skills Section */}
+          {user.skills && user.skills.length > 0 && (
+            <>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground flex items-center space-x-1">
+                  <Award className="h-4 w-4" />
+                  <span>{t('userSkills')}</span>
+                </label>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {user.skills.map((skill) => (
+                    <Badge key={skill.id} variant="outline">
+                      {skill.name}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+              <Separator />
+            </>
+          )}
 
           {/* Timestamps */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

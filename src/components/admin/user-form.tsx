@@ -1,8 +1,9 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { createUserAction, updateUserAction } from '@/server-actions/user';
+import { getSkillsForCompany } from '@/server-actions/user';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,12 +18,59 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { UserFormProps, UserFormState } from '@/types/user';
 import { Role, Status } from '@prisma/client';
 import { InfoAlert } from '../info-alert';
+import { ScrollArea } from '@/components/ui/scroll-area';
+
+interface Skill {
+  id: number;
+  name: string;
+}
 
 export function UserForm({ user, mode, companies = [] }: UserFormProps) {
   const t = useTranslations('app');
   const [selectedRole, setSelectedRole] = useState<Role>(
     user?.role || Role.EMPLOYEE
   );
+  const [selectedCompany, setSelectedCompany] = useState<string>(
+    user?.company_id?.toString() ?? ''
+  );
+  const [availableSkills, setAvailableSkills] = useState<Skill[]>([]);
+  const [selectedSkillIds, setSelectedSkillIds] = useState<number[]>(
+    user?.skills?.map((s: Skill) => s.id) ?? []
+  );
+  const [isLoadingSkills, setIsLoadingSkills] = useState(false);
+
+  // Load skills when company is selected
+  useEffect(() => {
+    const loadSkills = async () => {
+      if (selectedCompany) {
+        setIsLoadingSkills(true);
+        try {
+          const skills = await getSkillsForCompany(parseInt(selectedCompany));
+          setAvailableSkills(skills);
+          // Clear selected skills only if company changes AND we're creating
+          if (mode === 'create') {
+            setSelectedSkillIds([]);
+          } else if (mode === 'update' && user) {
+            // In update mode, filter to keep only skills that belong to the selected company
+            const companySkillIds = skills.map((s) => s.id);
+            setSelectedSkillIds((prev) =>
+              prev.filter((id) => companySkillIds.includes(id))
+            );
+          }
+        } catch (error) {
+          console.error('Error loading skills:', error);
+          setAvailableSkills([]);
+        } finally {
+          setIsLoadingSkills(false);
+        }
+      } else {
+        setAvailableSkills([]);
+        setSelectedSkillIds([]);
+      }
+    };
+
+    loadSkills();
+  }, [selectedCompany, mode, user]);
 
   const initialState: UserFormState = {
     success: false,
@@ -197,6 +245,7 @@ export function UserForm({ user, mode, companies = [] }: UserFormProps) {
               <Select
                 name="company_id"
                 defaultValue={state.formData.company_id || undefined}
+                onValueChange={(value) => setSelectedCompany(value)}
               >
                 <SelectTrigger
                   className={state.errors.company_id ? 'border-red-500' : ''}
@@ -216,6 +265,58 @@ export function UserForm({ user, mode, companies = [] }: UserFormProps) {
                   {getErrorMessage('company_id')}
                 </p>
               )}
+            </div>
+          )}
+
+          {/* Skills Selection Section */}
+          {selectedRole !== Role.ADMIN && selectedCompany && (
+            <div className="space-y-2">
+              <Label>{t('selectSkills')}</Label>
+              <ScrollArea className="h-48 w-full rounded-md border p-4">
+                {isLoadingSkills ? (
+                  <p className="text-sm text-muted-foreground">Loading...</p>
+                ) : availableSkills.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    {t('noSkillsFound')}
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {availableSkills.map((skill) => (
+                      <div
+                        key={skill.id}
+                        className="flex items-center space-x-2"
+                      >
+                        <input
+                          type="checkbox"
+                          id={`skill-${skill.id}`}
+                          name="skill_ids"
+                          value={skill.id.toString()}
+                          checked={selectedSkillIds.includes(skill.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedSkillIds([
+                                ...selectedSkillIds,
+                                skill.id,
+                              ]);
+                            } else {
+                              setSelectedSkillIds(
+                                selectedSkillIds.filter((id) => id !== skill.id)
+                              );
+                            }
+                          }}
+                          className="rounded border-gray-300"
+                        />
+                        <label
+                          htmlFor={`skill-${skill.id}`}
+                          className="text-sm cursor-pointer"
+                        >
+                          {skill.name}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
             </div>
           )}
 

@@ -17,6 +17,7 @@ import {
 } from '@/lib/validation-schemas';
 import logger from '@/lib/logger';
 import { checkAdminAuth } from './user';
+import { auth } from '@/lib/auth';
 
 export async function createCompanyAction(
   prevState: CompanyFormState,
@@ -325,6 +326,64 @@ export async function getAllCompanies() {
       error: (error as Error).message,
       stack: (error as Error).stack,
       action: 'getAllCompanies',
+    });
+    throw error;
+  }
+}
+
+export async function getCompaniesForUserForm() {
+  try {
+    const session = await auth();
+
+    if (!session) {
+      return [];
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: +session.user.id },
+      select: {
+        role: true,
+        company_id: true,
+      },
+    });
+
+    if (!user) {
+      return [];
+    }
+
+    // For admin, get all companies
+    if (user.role === 'ADMIN') {
+      const allCompanies = await prisma.company.findMany({
+        select: {
+          id: true,
+          name: true,
+        },
+        orderBy: {
+          name: 'asc',
+        },
+      });
+      return allCompanies;
+    }
+
+    // For manager, get only their company
+    if (user.role === 'MANAGER' && user.company_id) {
+      const company = await prisma.company.findUnique({
+        where: { id: user.company_id },
+        select: {
+          id: true,
+          name: true,
+        },
+      });
+
+      return company ? [company] : [];
+    }
+
+    return [];
+  } catch (error) {
+    logger.error('Error fetching companies for user form', {
+      error: (error as Error).message,
+      stack: (error as Error).stack,
+      action: 'getCompaniesForUserForm',
     });
     throw error;
   }

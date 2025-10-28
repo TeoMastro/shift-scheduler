@@ -9,7 +9,7 @@ export default async function AdminUsersPage({
 }: AdminUsersPageProps) {
   const session = await auth();
 
-  if (!session || session.user.role !== 'ADMIN') {
+  if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'MANAGER')) {
     notFound();
   }
 

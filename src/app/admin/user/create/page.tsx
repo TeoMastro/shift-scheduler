@@ -1,8 +1,19 @@
 import { UserForm } from '@/components/admin/user-form';
-import { getAllCompanies } from '@/server-actions/company';
+import { getCompaniesForUserForm } from '@/server-actions/company';
+import { auth } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 
 export default async function CreateUserPage() {
-  const companies = await getAllCompanies();
+  const session = await auth();
+
+  if (
+    !session ||
+    (session.user.role !== 'ADMIN' && session.user.role !== 'MANAGER')
+  ) {
+    redirect('/dashboard');
+  }
+
+  const companies = await getCompaniesForUserForm();
 
   return (
     <div className="container mx-auto py-6">
