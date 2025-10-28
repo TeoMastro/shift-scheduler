@@ -204,6 +204,9 @@
     "viewShiftType": "View shift type",
     "viewUser": "View User",
     "welcomeBack": "Welcome back",
-    "welcomeBackName": "Welcome back, {name}"
+    "myShifts": "My Shifts",
+    "dashboardDescription": "View and manage your scheduled shifts",
+    "noShiftsOnThisDay": "No shifts scheduled for this day",
+    "selectDateToViewShifts": "Select a date to view shifts"
   }
 }

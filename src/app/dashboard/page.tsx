@@ -1,7 +1,8 @@
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
 import { Status } from '@prisma/client';
+import { getUserShiftsForCalendar } from '@/server-actions/user-has-shift';
+import { ShiftCalendar } from '@/components/shift/shift-calendar';
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -10,10 +11,12 @@ export default async function DashboardPage() {
     redirect('/auth/signin');
   }
 
-  const t = await getTranslations('app');
+  // Fetch shifts for the calendar
+  const shifts = await getUserShiftsForCalendar();
+
   return (
-    <div className="container mx-auto">
-      <p>{t('welcomeBack', { name: session.user.name })}</p>
+    <div className="container mx-auto py-6">
+      <ShiftCalendar shifts={shifts} />
     </div>
   );
 }

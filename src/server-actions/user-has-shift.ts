@@ -798,3 +798,88 @@ export async function getAllShiftsForExport(
   const result = await fetchShifts({ ...params, paginate: false });
   return (result as GetUserHasShiftsResultWithoutPagination).shifts;
 }
+
+export async function getUserShiftsForCalendar() {
+  try {
+    const session = await auth();
+    if (!session) {
+      throw new Error('Unauthorized');
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: +session.user.id },
+      select: {
+        id: true,
+        role: true,
+        company_id: true,
+      },
+    });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Build where clause based on user role
+    let whereClause: any = {};
+
+    switch (user.role) {
+      case 'EMPLOYEE':
+        // Employees can only see their own shifts
+        whereClause.user_id = user.id;
+        break;
+
+      case 'MANAGER':
+        // Managers can see all shifts from their company
+        if (!user.company_id) {
+          return [];
+        }
+        whereClause.user = {
+          company_id: user.company_id,
+        };
+        break;
+
+      case 'ADMIN':
+        // Admins can see all shifts - no filter needed
+        break;
+
+      default:
+        return [];
+    }
+
+    const shifts = await prisma.userHasShift.findMany({
+      where: whereClause,
+      include: {
+        user: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            email: true,
+            company_id: true,
+          },
+        },
+        shift_type: {
+          select: {
+            id: true,
+            name: true,
+            start_time: true,
+            end_time: true,
+            company_id: true,
+          },
+        },
+      },
+      orderBy: {
+        date: 'asc',
+      },
+    });
+
+    return shifts;
+  } catch (error) {
+    logger.error('Error fetching user shifts for calendar', {
+      error: (error as Error).message,
+      stack: (error as Error).stack,
+      action: 'getUserShiftsForCalendar',
+    });
+    throw error;
+  }
+}
