@@ -287,6 +287,24 @@ export async function createShiftAction(
       };
     }
 
+    // Check if user is unavailable on this date
+    const unavailableDate = await prisma.unavailableDate.findFirst({
+      where: {
+        user_id: parseInt(parsed.data.user_id),
+        start_date: { lte: dateObj },
+        end_date: { gte: dateObj },
+      },
+    });
+
+    if (unavailableDate) {
+      return {
+        success: false,
+        errors: {},
+        formData: data,
+        globalError: 'userUnavailableOnDate',
+      };
+    }
+
     const newShift = await prisma.userHasShift.create({
       data: {
         user_id: parseInt(parsed.data.user_id),
@@ -466,6 +484,24 @@ export async function updateShiftAction(
         errors: {},
         formData: data,
         globalError: 'shiftAlreadyExists',
+      };
+    }
+
+    // Check if user is unavailable on this date
+    const unavailableDate = await prisma.unavailableDate.findFirst({
+      where: {
+        user_id: parseInt(parsed.data.user_id),
+        start_date: { lte: dateObj },
+        end_date: { gte: dateObj },
+      },
+    });
+
+    if (unavailableDate) {
+      return {
+        success: false,
+        errors: {},
+        formData: data,
+        globalError: 'userUnavailableOnDate',
       };
     }
 

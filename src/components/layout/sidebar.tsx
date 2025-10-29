@@ -1,4 +1,4 @@
-import { Award, Building2, Calendar, Clock, Heart, Home, Users } from 'lucide-react';
+import { Award, Building2, Calendar, Clock, Heart, Home, Users, XCircle } from 'lucide-react';
 
 import {
   Sidebar,
@@ -80,15 +80,20 @@ export async function AppSidebar() {
           },
         ]
       : []),
-    ...(session?.user.role === 'MANAGER' || session?.user.role === 'EMPLOYEE'
-      ? [
-          {
-            title: t('shiftDatePreferences'),
-            url: '/shift-date-preference',
-            icon: Heart,
-          },
-        ]
-      : []),
+      ...(session?.user.role === 'MANAGER' || session?.user.role === 'EMPLOYEE'
+        ? [
+            {
+              title: t('shiftDatePreferences'),
+              url: '/shift-date-preference',
+              icon: Heart,
+            },
+            {
+              title: t('unavailableDates'),
+              url: '/unavailable-date',
+              icon: XCircle,
+            },
+          ]
+        : []),
   ];
 
   return (

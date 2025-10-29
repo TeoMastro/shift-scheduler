@@ -15,7 +15,10 @@ export type SortField =
   | 'date'
   | 'company'
   | 'shifts_count'
-  | 'preference_type';
+  | 'preference_type'
+  | 'start_date'
+  | 'end_date'
+  | 'leave_type';
 
 export const SortableTableHeader = ({
   field,

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Role, Status, ShiftStatus, PreferenceType } from '@prisma/client';
+import { Role, Status, ShiftStatus, PreferenceType, LeaveType } from '@prisma/client';
 
 export const signinSchema = z.object({
   email: z.email('invalidEmail'),
@@ -195,3 +195,55 @@ export const updateShiftDatePreferenceSchema = z.object({
   date: z.string().min(1, 'dateRequired'),
   preference_type: z.enum([PreferenceType.DESIRED, PreferenceType.UNDESIRED]),
 });
+
+export const createUnavailableDateSchema = z
+  .object({
+    user_id: z.string().min(1, 'userRequired'),
+    start_date: z.string().min(1, 'startDateRequired'),
+    end_date: z.string().min(1, 'endDateRequired'),
+    leave_type: z.enum([
+      LeaveType.SICK_LEAVE,
+      LeaveType.VACATION,
+      LeaveType.PERSONAL_LEAVE,
+      LeaveType.UNPAID_LEAVE,
+      LeaveType.OTHER,
+    ]),
+    reason: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      const startDate = new Date(data.start_date);
+      const endDate = new Date(data.end_date);
+      return endDate >= startDate;
+    },
+    {
+      message: 'endDateMustBeAfterStartDate',
+      path: ['end_date'],
+    }
+  );
+
+export const updateUnavailableDateSchema = z
+  .object({
+    user_id: z.string().min(1, 'userRequired'),
+    start_date: z.string().min(1, 'startDateRequired'),
+    end_date: z.string().min(1, 'endDateRequired'),
+    leave_type: z.enum([
+      LeaveType.SICK_LEAVE,
+      LeaveType.VACATION,
+      LeaveType.PERSONAL_LEAVE,
+      LeaveType.UNPAID_LEAVE,
+      LeaveType.OTHER,
+    ]),
+    reason: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      const startDate = new Date(data.start_date);
+      const endDate = new Date(data.end_date);
+      return endDate >= startDate;
+    },
+    {
+      message: 'endDateMustBeAfterStartDate',
+      path: ['end_date'],
+    }
+  );

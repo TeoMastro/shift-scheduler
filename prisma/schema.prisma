@@ -48,11 +48,12 @@ model User {
   created_at               DateTime  @default(now())
   updated_at               DateTime  @updatedAt
 
-  company          Company?              @relation(fields: [company_id], references: [id])
-  accounts         Account[]
-  assigned_shifts  UserHasShift[]
-  skills           UserHasSkill[]
-  date_preferences ShiftDatePreference[]
+  company           Company?              @relation(fields: [company_id], references: [id])
+  accounts          Account[]
+  assigned_shifts   UserHasShift[]
+  skills            UserHasSkill[]
+  date_preferences  ShiftDatePreference[]
+  unavailable_dates UnavailableDate[]
 
   @@map("user")
 }
@@ -121,6 +122,14 @@ enum PreferenceType {
   UNDESIRED
 }
 
+enum LeaveType {
+  SICK_LEAVE
+  VACATION
+  PERSONAL_LEAVE
+  UNPAID_LEAVE
+  OTHER
+}
+
 model Skill {
   id         Int      @id @default(autoincrement())
   name       String
@@ -161,4 +170,21 @@ model ShiftDatePreference {
   @@unique([user_id, date, preference_type])
   @@index([user_id, date])
   @@map("shift_date_preference")
+}
+
+model UnavailableDate {
+  id         Int       @id @default(autoincrement())
+  user_id    Int
+  start_date DateTime  @db.Date
+  end_date   DateTime  @db.Date
+  leave_type LeaveType
+  reason     String?   @db.Text
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, start_date, end_date])
+  @@index([user_id, start_date, end_date])
+  @@map("unavailable_date")
 }
