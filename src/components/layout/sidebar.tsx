@@ -1,4 +1,4 @@
-import { Award, Building2, Calendar, Clock, Home, Users } from 'lucide-react';
+import { Award, Building2, Calendar, Clock, Heart, Home, Users } from 'lucide-react';
 
 import {
   Sidebar,
@@ -77,6 +77,15 @@ export async function AppSidebar() {
             title: t('skills'),
             url: '/skill',
             icon: Award,
+          },
+        ]
+      : []),
+    ...(session?.user.role === 'MANAGER' || session?.user.role === 'EMPLOYEE'
+      ? [
+          {
+            title: t('shiftDatePreferences'),
+            url: '/shift-date-preference',
+            icon: Heart,
           },
         ]
       : []),

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Role, Status, ShiftStatus } from '@prisma/client';
+import { Role, Status, ShiftStatus, PreferenceType } from '@prisma/client';
 
 export const signinSchema = z.object({
   email: z.email('invalidEmail'),
@@ -182,4 +182,16 @@ export const createSkillSchema = z.object({
 export const updateSkillSchema = z.object({
   name: z.string().min(1, 'skillNameRequired').max(100, 'skillNameTooLong'),
   company_id: z.string().optional(),
+});
+
+export const createShiftDatePreferenceSchema = z.object({
+  user_id: z.string().min(1, 'userRequired'),
+  date: z.string().min(1, 'dateRequired'),
+  preference_type: z.enum([PreferenceType.DESIRED, PreferenceType.UNDESIRED]),
+});
+
+export const updateShiftDatePreferenceSchema = z.object({
+  user_id: z.string().min(1, 'userRequired'),
+  date: z.string().min(1, 'dateRequired'),
+  preference_type: z.enum([PreferenceType.DESIRED, PreferenceType.UNDESIRED]),
 });
