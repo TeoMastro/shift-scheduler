@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth';
 import { redirect, notFound } from 'next/navigation';
 import { getShiftTypeById } from '@/server-actions/shift-type';
 import { ShiftTypePageProps } from '@/types/shift-type';
-import { ShiftTypeView } from '@/components/admin/shift-type-view';
+import { ShiftTypeView } from '@/components/shift-type/shift-type-view';
 
 export default async function ViewShiftTypePage({
   params,
@@ -13,8 +13,8 @@ export default async function ViewShiftTypePage({
     redirect('/auth/signin');
   }
 
-  if (session.user.role !== 'ADMIN' && session.user.role !== 'MANAGER') {
-    redirect('/dashboard');
+  if (session.user.role !== 'MANAGER') {
+    notFound();
   }
 
   const resolvedParams = await params;

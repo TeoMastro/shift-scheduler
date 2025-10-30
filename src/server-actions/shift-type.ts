@@ -35,12 +35,12 @@ async function checkShiftTypeAccess(
     throw new Error('User not found');
   }
 
-  if (user.role !== 'ADMIN' && user.role !== 'MANAGER') {
+  if (user.role !== 'MANAGER') {
     throw new Error('Unauthorized');
   }
 
   return {
-    userRole: user.role as 'ADMIN' | 'MANAGER',
+    userRole: 'MANAGER' as const,
     userCompanyId: user.company_id,
   };
 }
@@ -72,64 +72,6 @@ export async function getCurrentUserForShiftType() {
   }
 }
 
-export async function getCompaniesForShiftTypeForm() {
-  try {
-    const session = await auth();
-
-    if (!session) {
-      return [];
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: +session.user.id },
-      select: {
-        role: true,
-        company_id: true,
-      },
-    });
-
-    if (!user) {
-      return [];
-    }
-
-    // For admin, get all companies
-    if (user.role === 'ADMIN') {
-      const allCompanies = await prisma.company.findMany({
-        select: {
-          id: true,
-          name: true,
-        },
-        orderBy: {
-          name: 'asc',
-        },
-      });
-      return allCompanies;
-    }
-
-    // For manager, get only their company
-    if (user.role === 'MANAGER' && user.company_id) {
-      const company = await prisma.company.findUnique({
-        where: { id: user.company_id },
-        select: {
-          id: true,
-          name: true,
-        },
-      });
-
-      return company ? [company] : [];
-    }
-
-    return [];
-  } catch (error) {
-    logger.error('Error fetching companies for shift type form', {
-      error: (error as Error).message,
-      stack: (error as Error).stack,
-      action: 'getCompaniesForShiftTypeForm',
-    });
-    throw error;
-  }
-}
-
 export async function createShiftTypeAction(
   prevState: ShiftTypeFormState,
   formData: FormData
@@ -149,7 +91,6 @@ export async function createShiftTypeAction(
       name: formData.get('name')?.toString() ?? '',
       start_time: formData.get('start_time')?.toString() ?? '',
       end_time: formData.get('end_time')?.toString() ?? '',
-      company_id: formData.get('company_id')?.toString() ?? '',
     };
 
     const parsed = createShiftTypeSchema.safeParse(data);
@@ -163,19 +104,16 @@ export async function createShiftTypeAction(
       };
     }
 
-    // Ensure manager can only create shift types for their own company
-    let companyId = parseInt(parsed.data.company_id);
-    if (userRole === 'MANAGER') {
-      if (userCompanyId === null) {
-        return {
-          success: false,
-          errors: {},
-          formData: data,
-          globalError: 'managerMustBelongToCompany',
-        };
-      }
-      companyId = userCompanyId;
+    // Manager can only create for their own company
+    if (userCompanyId === null) {
+      return {
+        success: false,
+        errors: {},
+        formData: data,
+        globalError: 'managerMustBelongToCompany',
+      };
     }
+    const companyId = userCompanyId;
 
     const trimmedName = parsed.data.name.trim();
 
@@ -212,7 +150,6 @@ export async function createShiftTypeAction(
         name: formData.get('name')?.toString() ?? '',
         start_time: formData.get('start_time')?.toString() ?? '',
         end_time: formData.get('end_time')?.toString() ?? '',
-        company_id: formData.get('company_id')?.toString() ?? '',
       },
       globalError: 'unexpectedError',
     };
@@ -249,7 +186,6 @@ export async function updateShiftTypeAction(
           name: formData.get('name')?.toString() ?? '',
           start_time: formData.get('start_time')?.toString() ?? '',
           end_time: formData.get('end_time')?.toString() ?? '',
-          company_id: '',
         },
         globalError: 'shiftTypeNotFound',
       };
@@ -277,7 +213,6 @@ export async function updateShiftTypeAction(
         errors: formatZodErrors(parsed.error),
         formData: {
           ...data,
-          company_id: existingShiftType.company_id.toString(),
         },
         globalError: null,
       };
@@ -318,7 +253,6 @@ export async function updateShiftTypeAction(
         name: formData.get('name')?.toString() ?? '',
         start_time: formData.get('start_time')?.toString() ?? '',
         end_time: formData.get('end_time')?.toString() ?? '',
-        company_id: formData.get('company_id')?.toString() ?? '',
       },
       globalError: 'unexpectedError',
     };

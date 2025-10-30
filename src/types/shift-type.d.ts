@@ -24,7 +24,6 @@ export type ShiftTypeFormState = {
     name: string;
     start_time: string;
     end_time: string;
-    company_id: string;
   };
   globalError: string | null;
 };

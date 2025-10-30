@@ -63,6 +63,11 @@ export const config = {
     '/profile/:path*',
     '/settings/:path*',
     '/admin/:path*',
+    '/shift-type/:path*',
+    '/shift/:path*',
+    '/skill/:path*',
+    '/shift-date-preference/:path*',
+    '/unavailable-date/:path*',
     '/api/((?!auth).)*',
   ],
 };

@@ -1,10 +1,9 @@
 import { notFound } from 'next/navigation';
-import { ShiftTypeForm } from '@/components/admin/shift-type-form';
+import { ShiftTypeForm } from '@/components/shift-type/shift-type-form';
 import { ShiftTypePageProps } from '@/types/shift-type';
 import {
   getShiftTypeById,
   getCurrentUserForShiftType,
-  getCompaniesForShiftTypeForm,
 } from '@/server-actions/shift-type';
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
@@ -18,8 +17,8 @@ export default async function UpdateShiftTypePage({
     redirect('/auth/signin');
   }
 
-  if (session.user.role !== 'ADMIN' && session.user.role !== 'MANAGER') {
-    redirect('/dashboard');
+  if (session.user.role !== 'MANAGER') {
+    notFound();
   }
 
   const resolvedParams = await params;
@@ -41,17 +40,9 @@ export default async function UpdateShiftTypePage({
     notFound();
   }
 
-  const companies = await getCompaniesForShiftTypeForm();
-
   return (
     <div className="container mx-auto py-6">
-      <ShiftTypeForm
-        shiftType={shiftType}
-        mode="update"
-        companies={companies}
-        userRole={user.role}
-        userCompanyId={user.company_id}
-      />
+      <ShiftTypeForm shiftType={shiftType} mode="update" />
     </div>
   );
 }

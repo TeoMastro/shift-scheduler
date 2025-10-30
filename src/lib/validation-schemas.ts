@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { Role, Status, ShiftStatus, PreferenceType, LeaveType } from '@prisma/client';
+import {
+  Role,
+  Status,
+  ShiftStatus,
+  PreferenceType,
+  LeaveType,
+} from '@prisma/client';
 
 export const signinSchema = z.object({
   email: z.email('invalidEmail'),
@@ -127,7 +133,6 @@ export const createShiftTypeSchema = z
       .max(100, 'shiftTypeNameTooLong'),
     start_time: z.string().min(1, 'startTimeRequired'),
     end_time: z.string().min(1, 'endTimeRequired'),
-    company_id: z.string().min(1, 'companyRequired'),
   })
   .refine((data) => data.start_time !== data.end_time, {
     message: 'startTimeCannotEqualEndTime',

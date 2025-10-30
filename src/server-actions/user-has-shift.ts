@@ -932,7 +932,56 @@ export async function submitAutoAssignAction(data: {
       throw new Error('Unauthorized');
     }
 
-    // Get all employees from the company
+    // Helpers
+    const toYMD = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+    const eachDate = (start: string, end: string) => {
+      const out: string[] = [];
+      const s = new Date(start);
+      const e = new Date(end);
+      s.setHours(0, 0, 0, 0);
+      e.setHours(0, 0, 0, 0);
+      for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+        out.push(toYMD(d));
+      }
+      return out;
+    };
+
+    const joinDateTime = (ymd: string, time: string) => `${ymd}T${time}`;
+
+    // Managers for the company
+    const managers = await prisma.user.findMany({
+      where: {
+        company_id: data.company_id,
+        role: 'MANAGER',
+      },
+      select: {
+        id: true,
+        first_name: true,
+        last_name: true,
+        email: true,
+        skills: {
+          select: {
+            skill: { select: { name: true } },
+          },
+        },
+        date_preferences: {
+          select: {
+            date: true,
+            preference_type: true,
+          },
+        },
+        unavailable_dates: {
+          select: {
+            start_date: true,
+            end_date: true,
+          },
+        },
+      },
+    });
+
+    // Employees with skills, date preferences, unavailable ranges
     const employees = await prisma.user.findMany({
       where: {
         company_id: data.company_id,
@@ -940,14 +989,32 @@ export async function submitAutoAssignAction(data: {
       },
       select: {
         id: true,
+        first_name: true,
+        last_name: true,
+        email: true,
+        skills: {
+          select: {
+            skill: { select: { name: true } },
+          },
+        },
+        date_preferences: {
+          select: {
+            date: true,
+            preference_type: true,
+          },
+        },
+        unavailable_dates: {
+          select: {
+            start_date: true,
+            end_date: true,
+          },
+        },
       },
     });
 
-    // Get all shift types from the company
+    // Shift types
     const shiftTypesData = await prisma.shiftType.findMany({
-      where: {
-        company_id: data.company_id,
-      },
+      where: { company_id: data.company_id },
       select: {
         id: true,
         name: true,
@@ -956,7 +1023,6 @@ export async function submitAutoAssignAction(data: {
       },
     });
 
-    // Format shift types with time-only fields
     const shiftTypes = shiftTypesData.map((st) => ({
       id: st.id,
       name: st.name,
@@ -964,12 +1030,78 @@ export async function submitAutoAssignAction(data: {
       end_time: formatTime(st.end_time),
     }));
 
-    // Create JSON payload
+    // Employees output with requested structure
+    const employeesOut = employees.map((u) => {
+      const fullName =
+        [u.first_name, u.last_name].filter(Boolean).join(' ').trim() || u.email;
+
+      const skills = u.skills.map((s) => s.skill.name);
+
+      const desiredDates = u.date_preferences
+        .filter((p) => p.preference_type === 'DESIRED')
+        .map((p) => toYMD(new Date(p.date)));
+
+      const undesiredDates = u.date_preferences
+        .filter((p) => p.preference_type === 'UNDESIRED')
+        .map((p) => toYMD(new Date(p.date)));
+
+      const unavailableDates = u.unavailable_dates.flatMap((r) =>
+        eachDate(toYMD(new Date(r.start_date)), toYMD(new Date(r.end_date)))
+      );
+
+      return {
+        name: fullName,
+        skills,
+        unavailableDates,
+        undesiredDates,
+        desiredDates,
+      };
+    });
+
+    // Build shifts for each date in range for every shift type
+    const allDays = eachDate(data.start_date, data.end_date);
+    let idCounter = 0;
+    const shifts = allDays.flatMap((ymd) =>
+      shiftTypes.map((st) => ({
+        id: String(idCounter++),
+        start: joinDateTime(ymd, st.start_time),
+        end: joinDateTime(ymd, st.end_time),
+        location: 'Default',
+        requiredSkill: st.name,
+        employee: null,
+      }))
+    );
+
+    const managersAsEmployees = managers.map((u) => {
+      const fullName =
+        [u.first_name, u.last_name].filter(Boolean).join(' ').trim() || u.email;
+
+      const skills = u.skills.map((s) => s.skill.name);
+
+      const desiredDates = u.date_preferences
+        .filter((p) => p.preference_type === 'DESIRED')
+        .map((p) => toYMD(new Date(p.date)));
+
+      const undesiredDates = u.date_preferences
+        .filter((p) => p.preference_type === 'UNDESIRED')
+        .map((p) => toYMD(new Date(p.date)));
+
+      const unavailableDates = u.unavailable_dates.flatMap((r) =>
+        eachDate(toYMD(new Date(r.start_date)), toYMD(new Date(r.end_date)))
+      );
+
+      return {
+        name: fullName,
+        skills,
+        unavailableDates,
+        undesiredDates,
+        desiredDates,
+      };
+    });
+
     const payload = {
-      user_ids: employees.map((emp) => emp.id),
-      shift_types: shiftTypes,
-      start_date: data.start_date,
-      end_date: data.end_date,
+      employees: [...employeesOut, ...managersAsEmployees],
+      shifts,
     };
 
     logger.info('Auto-assign payload generated', {

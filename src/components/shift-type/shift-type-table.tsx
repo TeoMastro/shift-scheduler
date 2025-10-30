@@ -101,7 +101,7 @@ export function ShiftTypesTable({
       updateUrl({
         sortField: field,
         sortDirection: newDirection,
-        page: '1', // Reset to first page when sorting
+        page: '1',
       });
     },
     [sortField, sortDirection, updateUrl]
@@ -119,7 +119,7 @@ export function ShiftTypesTable({
   const debouncedSearch = useDebouncedCallback((value: string) => {
     updateUrl({
       search: value,
-      page: '1', // Reset to first page when searching
+      page: '1',
     });
   }, 300);
 

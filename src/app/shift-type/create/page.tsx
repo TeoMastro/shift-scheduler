@@ -1,10 +1,7 @@
-import { ShiftTypeForm } from '@/components/admin/shift-type-form';
+import { ShiftTypeForm } from '@/components/shift-type/shift-type-form';
 import { auth } from '@/lib/auth';
 import { notFound, redirect } from 'next/navigation';
-import {
-  getCurrentUserForShiftType,
-  getCompaniesForShiftTypeForm,
-} from '@/server-actions/shift-type';
+import { getCurrentUserForShiftType } from '@/server-actions/shift-type';
 
 export default async function CreateShiftTypePage() {
   const session = await auth();
@@ -13,7 +10,7 @@ export default async function CreateShiftTypePage() {
     redirect('/auth/signin');
   }
 
-  if (session.user.role !== 'ADMIN' && session.user.role !== 'MANAGER') {
+  if (session.user.role !== 'MANAGER') {
     notFound();
   }
 
@@ -23,16 +20,9 @@ export default async function CreateShiftTypePage() {
     notFound();
   }
 
-  const companies = await getCompaniesForShiftTypeForm();
-
   return (
     <div className="container mx-auto py-6">
-      <ShiftTypeForm
-        mode="create"
-        companies={companies}
-        userRole={user.role}
-        userCompanyId={user.company_id}
-      />
+      <ShiftTypeForm mode="create" />
     </div>
   );
 }

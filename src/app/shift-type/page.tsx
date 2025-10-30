@@ -1,6 +1,6 @@
 import { auth } from '@/lib/auth';
 import { notFound, redirect } from 'next/navigation';
-import { ShiftTypesTable } from '@/components/admin/shift-type-table';
+import { ShiftTypesTable } from '@/components/shift-type/shift-type-table';
 import { AdminShiftTypesPageProps } from '@/types/shift-type';
 import {
   getShiftTypesWithPagination,
@@ -18,8 +18,8 @@ export default async function ShiftTypesPage({
     redirect('/auth/signin');
   }
 
-  // Check if user is admin or manager
-  if (session.user.role !== 'ADMIN' && session.user.role !== 'MANAGER') {
+  // Only managers can access shift types
+  if (session.user.role !== 'MANAGER') {
     notFound();
   }
 

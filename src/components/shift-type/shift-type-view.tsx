@@ -72,9 +72,7 @@ export function ShiftTypeView({ shiftType }: ShiftTypeViewProps) {
               <Button
                 variant="outline"
                 disabled={!canDelete}
-                title={
-                  !canDelete ? t('cannotDeleteShiftTypeWithShifts') : ''
-                }
+                title={!canDelete ? t('cannotDeleteShiftTypeWithShifts') : ''}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -215,4 +213,3 @@ export function ShiftTypeView({ shiftType }: ShiftTypeViewProps) {
     </div>
   );
 }
-

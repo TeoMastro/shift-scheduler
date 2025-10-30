@@ -10,30 +10,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { ShiftTypeFormProps, ShiftTypeFormState } from '@/types/shift-type';
 import { InfoAlert } from '@/components/info-alert';
-import { Company } from '@/types/company';
 
-interface ShiftTypeFormWithProps extends ShiftTypeFormProps {
-  companies: { id: number; name: string }[];
-  userRole: string;
-  userCompanyId: number | null;
-}
-
-export function ShiftTypeForm({
-  shiftType,
-  mode,
-  companies,
-  userRole,
-  userCompanyId,
-}: ShiftTypeFormWithProps) {
+export function ShiftTypeForm({ shiftType, mode }: ShiftTypeFormProps) {
   const t = useTranslations('app');
 
   const formatTime = (date: Date) => {
@@ -49,7 +29,6 @@ export function ShiftTypeForm({
       name: shiftType?.name ?? '',
       start_time: shiftType ? formatTime(shiftType.start_time) : '',
       end_time: shiftType ? formatTime(shiftType.end_time) : '',
-      company_id: shiftType?.company_id.toString() ?? '',
     },
     globalError: null,
   };
@@ -135,39 +114,7 @@ export function ShiftTypeForm({
             )}
           </div>
 
-          {mode === 'create' && (
-            <div className="space-y-2">
-              <Label htmlFor="company_id">{t('company')}</Label>
-              <Select
-                name="company_id"
-                defaultValue={userRole === 'MANAGER' && userCompanyId ? userCompanyId.toString() : state.formData.company_id}
-                disabled={userRole === 'MANAGER'}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t('selectCompany')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {companies.map((company) => (
-                    <SelectItem key={company.id} value={company.id.toString()}>
-                      {company.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {state.errors.company_id && (
-                <p className="text-sm text-red-500">
-                  {getErrorMessage('company_id')}
-                </p>
-              )}
-              {userRole === 'MANAGER' && (
-                <input
-                  type="hidden"
-                  name="company_id"
-                  value={userCompanyId?.toString() ?? ''}
-                />
-              )}
-            </div>
-          )}
+          {/* company selection removed; manager's company is implied */}
 
           <div className="flex gap-4">
             <Button type="submit">
@@ -186,4 +133,3 @@ export function ShiftTypeForm({
     </Card>
   );
 }
-
