@@ -40,6 +40,7 @@ export default async function UpdateUserPage({ params }: PageProps) {
           user={{ ...user, skills: userSkills }}
           mode="update"
           companies={companies}
+          currentUserId={+session.user.id}
         />
       </div>
     );

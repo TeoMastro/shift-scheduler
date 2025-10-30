@@ -1012,7 +1012,6 @@ export async function submitAutoAssignAction(data: {
       },
     });
 
-    // Shift types
     const shiftTypesData = await prisma.shiftType.findMany({
       where: { company_id: data.company_id },
       select: {
@@ -1020,6 +1019,9 @@ export async function submitAutoAssignAction(data: {
         name: true,
         start_time: true,
         end_time: true,
+        skills: {
+          select: { skill: { select: { name: true } } },
+        },
       },
     });
 
@@ -1028,6 +1030,7 @@ export async function submitAutoAssignAction(data: {
       name: st.name,
       start_time: formatTime(st.start_time),
       end_time: formatTime(st.end_time),
+      skills: st.skills.map((s) => s.skill.name),
     }));
 
     // Employees output with requested structure
@@ -1068,6 +1071,7 @@ export async function submitAutoAssignAction(data: {
         end: joinDateTime(ymd, st.end_time),
         location: 'Default',
         requiredSkill: st.name,
+        skills: st.skills,
         employee: null,
       }))
     );

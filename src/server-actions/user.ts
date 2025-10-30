@@ -230,7 +230,11 @@ export async function updateUserAction(
       };
     }
 
-    // Managers can only update users in their company and cannot change their role to anything other than EMPLOYEE
+    // If a user edits themselves, enforce role remains unchanged (admin stays admin, manager stays manager)
+    if (userId === +session.user.id && existingUser) {
+      data.role = existingUser.role as Role;
+    }
+
     if (session.user.role === 'MANAGER') {
       if (!managerCompanyId || existingUser.company_id !== managerCompanyId) {
         throw new Error('Unauthorized');
@@ -239,15 +243,26 @@ export async function updateUserAction(
       // Managers cannot change user's company
       data.company_id = managerCompanyId.toString();
 
-      // Managers cannot elevate users to MANAGER or ADMIN
-      if (data.role !== Role.EMPLOYEE) {
-        return {
-          success: false,
-          errors: {},
-          formData: { ...data, password: '' },
-          globalError: 'managersCanOnlySetEmployeeRole',
-        };
+      const isEditingSelf = userId === +session.user.id;
+      if (isEditingSelf) {
+        // Force own role and status to remain unchanged
+        data.role = Role.MANAGER;
+        data.status = existingUser.status as Status;
+      } else {
+        if (data.role !== Role.EMPLOYEE) {
+          return {
+            success: false,
+            errors: {},
+            formData: { ...data, password: '' },
+            globalError: 'managersCanOnlySetEmployeeRole',
+          };
+        }
       }
+    }
+
+    // For any user editing themselves (admin or manager), keep their current status regardless of submitted value
+    if (userId === +session.user.id && existingUser) {
+      data.status = existingUser.status as Status;
     }
 
     const parsed = updateUserSchema.safeParse(data);

@@ -78,6 +78,7 @@ export type UserFormProps = {
     | null;
   mode: 'create' | 'update';
   companies?: { id: number; name: string }[];
+  currentUserId?: number;
 };
 
 export type UserViewProps = {

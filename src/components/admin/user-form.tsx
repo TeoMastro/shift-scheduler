@@ -25,7 +25,12 @@ interface Skill {
   name: string;
 }
 
-export function UserForm({ user, mode, companies = [] }: UserFormProps) {
+export function UserForm({
+  user,
+  mode,
+  companies = [],
+  currentUserId,
+}: UserFormProps) {
   const t = useTranslations('app');
   const [selectedRole, setSelectedRole] = useState<Role>(
     user?.role || Role.EMPLOYEE
@@ -192,51 +197,67 @@ export function UserForm({ user, mode, companies = [] }: UserFormProps) {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="role">{t('role')}</Label>
-              <Select
-                name="role"
-                defaultValue={state.formData.role}
-                onValueChange={(value) => setSelectedRole(value as Role)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t('selectRole')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ADMIN">{t('adminRole')}</SelectItem>
-                  <SelectItem value="EMPLOYEE">{t('employeeRole')}</SelectItem>
-                  <SelectItem value="MANAGER">{t('managerRole')}</SelectItem>
-                </SelectContent>
-              </Select>
-              {state.errors.role && (
-                <p className="text-sm text-red-500">
-                  {getErrorMessage('role')}
-                </p>
-              )}
-            </div>
+            {!(
+              mode === 'update' &&
+              user &&
+              currentUserId &&
+              user.id === currentUserId
+            ) && (
+              <div className="space-y-2">
+                <Label htmlFor="role">{t('role')}</Label>
+                <Select
+                  name="role"
+                  defaultValue={state.formData.role}
+                  onValueChange={(value) => setSelectedRole(value as Role)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('selectRole')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ADMIN">{t('adminRole')}</SelectItem>
+                    <SelectItem value="EMPLOYEE">
+                      {t('employeeRole')}
+                    </SelectItem>
+                    <SelectItem value="MANAGER">{t('managerRole')}</SelectItem>
+                  </SelectContent>
+                </Select>
+                {state.errors.role && (
+                  <p className="text-sm text-red-500">
+                    {getErrorMessage('role')}
+                  </p>
+                )}
+              </div>
+            )}
 
-            <div className="space-y-2">
-              <Label htmlFor="status">{t('status')}</Label>
-              <Select name="status" defaultValue={state.formData.status}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t('selectStatus')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ACTIVE">{t('activeStatus')}</SelectItem>
-                  <SelectItem value="INACTIVE">
-                    {t('inactiveStatus')}
-                  </SelectItem>
-                  <SelectItem value="UNVERIFIED">
-                    {t('unverifiedStatus')}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              {state.errors.status && (
-                <p className="text-sm text-red-500">
-                  {getErrorMessage('status')}
-                </p>
-              )}
-            </div>
+            {!(
+              mode === 'update' &&
+              user &&
+              currentUserId &&
+              user.id === currentUserId
+            ) && (
+              <div className="space-y-2">
+                <Label htmlFor="status">{t('status')}</Label>
+                <Select name="status" defaultValue={state.formData.status}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('selectStatus')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ACTIVE">{t('activeStatus')}</SelectItem>
+                    <SelectItem value="INACTIVE">
+                      {t('inactiveStatus')}
+                    </SelectItem>
+                    <SelectItem value="UNVERIFIED">
+                      {t('unverifiedStatus')}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                {state.errors.status && (
+                  <p className="text-sm text-red-500">
+                    {getErrorMessage('status')}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {selectedRole !== Role.ADMIN && (
