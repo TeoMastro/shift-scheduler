@@ -13,7 +13,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShiftTypeFormProps, ShiftTypeFormState } from '@/types/shift-type';
 import { InfoAlert } from '@/components/info-alert';
 
-export function ShiftTypeForm({ shiftType, mode }: ShiftTypeFormProps) {
+export function ShiftTypeForm({
+  shiftType,
+  mode,
+  availableSkills,
+  selectedSkillIds = [],
+}: ShiftTypeFormProps) {
   const t = useTranslations('app');
 
   const formatTime = (date: Date) => {
@@ -29,6 +34,7 @@ export function ShiftTypeForm({ shiftType, mode }: ShiftTypeFormProps) {
       name: shiftType?.name ?? '',
       start_time: shiftType ? formatTime(shiftType.start_time) : '',
       end_time: shiftType ? formatTime(shiftType.end_time) : '',
+      skill_ids: selectedSkillIds.map((id) => String(id)),
     },
     globalError: null,
   };
@@ -114,7 +120,29 @@ export function ShiftTypeForm({ shiftType, mode }: ShiftTypeFormProps) {
             )}
           </div>
 
-          {/* company selection removed; manager's company is implied */}
+          {/* Skills multi-select (checkbox list) */}
+          <div className="space-y-2">
+            <Label>{t('skills')}</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 border rounded-md p-3 max-h-64 overflow-auto">
+              {availableSkills.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  {t('noSkillsFound')}
+                </p>
+              )}
+              {availableSkills.map((skill) => (
+                <label key={skill.id} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    name="skill_ids"
+                    value={skill.id}
+                    defaultChecked={selectedSkillIds.includes(skill.id)}
+                    className="h-4 w-4"
+                  />
+                  <span>{skill.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
 
           <div className="flex gap-4">
             <Button type="submit">

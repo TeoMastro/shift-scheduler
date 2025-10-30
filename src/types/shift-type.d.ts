@@ -12,6 +12,10 @@ export type ShiftType = {
     id: number;
     name: string;
   };
+  skills?: Array<{
+    skill_id: number;
+    skill: { id: number; name: string };
+  }>;
   _count?: {
     shifts: number;
   };
@@ -24,6 +28,7 @@ export type ShiftTypeFormState = {
     name: string;
     start_time: string;
     end_time: string;
+    skill_ids?: string[];
   };
   globalError: string | null;
 };
@@ -59,6 +64,8 @@ export type ShiftTypeFormProps = {
     'created_at' | 'updated_at' | '_count' | 'company'
   > | null;
   mode: 'create' | 'update';
+  availableSkills: { id: number; name: string }[];
+  selectedSkillIds?: number[];
 };
 
 export type ShiftTypeViewProps = {

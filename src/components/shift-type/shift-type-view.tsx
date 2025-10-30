@@ -186,6 +186,27 @@ export function ShiftTypeView({ shiftType }: ShiftTypeViewProps) {
 
           <Separator />
 
+          {/* Required Skills */}
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-muted-foreground flex items-center space-x-1">
+              <Clock className="h-4 w-4" />
+              <span>{t('skills')}</span>
+            </label>
+            {!shiftType.skills || shiftType.skills.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {t('noSkillsFound')}
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {shiftType.skills.map((s) => (
+                  <Badge key={s.skill_id} variant="outline" className="text-sm">
+                    {s.skill.name}
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Timestamps */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>

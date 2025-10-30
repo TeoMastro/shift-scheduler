@@ -87,8 +87,9 @@ model ShiftType {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  company Company        @relation(fields: [company_id], references: [id])
+  company Company             @relation(fields: [company_id], references: [id])
   shifts  UserHasShift[]
+  skills  ShiftTypeHasSkill[]
 
   @@map("shift_type")
 }
@@ -137,11 +138,25 @@ model Skill {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  company Company        @relation(fields: [company_id], references: [id])
-  users   UserHasSkill[]
+  company     Company             @relation(fields: [company_id], references: [id])
+  users       UserHasSkill[]
+  shift_types ShiftTypeHasSkill[]
 
   @@unique([name, company_id])
   @@map("skill")
+}
+
+model ShiftTypeHasSkill {
+  id            Int      @id @default(autoincrement())
+  shift_type_id Int
+  skill_id      Int
+  created_at    DateTime @default(now())
+
+  shift_type ShiftType @relation(fields: [shift_type_id], references: [id], onDelete: Cascade)
+  skill      Skill     @relation(fields: [skill_id], references: [id])
+
+  @@unique([shift_type_id, skill_id])
+  @@map("shift_type_has_skill")
 }
 
 model UserHasSkill {

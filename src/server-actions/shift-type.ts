@@ -72,6 +72,42 @@ export async function getCurrentUserForShiftType() {
   }
 }
 
+export async function getSkillsForShiftTypeForm() {
+  try {
+    const session = await auth();
+    if (!session) {
+      return [];
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: +session.user.id },
+      select: {
+        role: true,
+        company_id: true,
+      },
+    });
+
+    if (!user || user.role !== 'MANAGER' || user.company_id === null) {
+      return [];
+    }
+
+    const skills = await prisma.skill.findMany({
+      where: { company_id: user.company_id },
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    });
+
+    return skills;
+  } catch (error) {
+    logger.error('Error fetching skills for shift type form', {
+      error: (error as Error).message,
+      stack: (error as Error).stack,
+      action: 'getSkillsForShiftTypeForm',
+    });
+    throw error;
+  }
+}
+
 export async function createShiftTypeAction(
   prevState: ShiftTypeFormState,
   formData: FormData
@@ -91,6 +127,7 @@ export async function createShiftTypeAction(
       name: formData.get('name')?.toString() ?? '',
       start_time: formData.get('start_time')?.toString() ?? '',
       end_time: formData.get('end_time')?.toString() ?? '',
+      skill_ids: (formData.getAll('skill_ids') as string[]) || [],
     };
 
     const parsed = createShiftTypeSchema.safeParse(data);
@@ -129,6 +166,28 @@ export async function createShiftTypeAction(
         company_id: companyId,
       },
     });
+
+    // Link skills to the new shift type (only skills from manager's company)
+    const skillIds = (parsed.data.skill_ids || [])
+      .map((id) => parseInt(id))
+      .filter((n) => !Number.isNaN(n));
+
+    if (skillIds.length > 0) {
+      const validSkills = await prisma.skill.findMany({
+        where: { id: { in: skillIds }, company_id: companyId },
+        select: { id: true },
+      });
+      const toCreate = validSkills.map((s) => ({
+        shift_type_id: newShiftType.id,
+        skill_id: s.id,
+      }));
+      if (toCreate.length > 0) {
+        await prisma.shiftTypeHasSkill.createMany({
+          data: toCreate,
+          skipDuplicates: true,
+        });
+      }
+    }
 
     logger.info('Shift type created successfully', {
       userId: session.user.id,
@@ -203,6 +262,7 @@ export async function updateShiftTypeAction(
       name: formData.get('name')?.toString() ?? '',
       start_time: formData.get('start_time')?.toString() ?? '',
       end_time: formData.get('end_time')?.toString() ?? '',
+      skill_ids: (formData.getAll('skill_ids') as string[]) || [],
     };
 
     const parsed = updateShiftTypeSchema.safeParse(data);
@@ -232,6 +292,44 @@ export async function updateShiftTypeAction(
         end_time: endTimeDate,
       },
     });
+
+    // Update skill links (validate skills belong to manager's company)
+    const newIds = (parsed.data.skill_ids || [])
+      .map((id) => parseInt(id))
+      .filter((n) => !Number.isNaN(n));
+
+    const validSkills = newIds.length
+      ? await prisma.skill.findMany({
+          where: { id: { in: newIds }, company_id: userCompanyId! },
+          select: { id: true },
+        })
+      : [];
+    const validIds = new Set(validSkills.map((s) => s.id));
+
+    const existingLinks = await prisma.shiftTypeHasSkill.findMany({
+      where: { shift_type_id: shiftTypeId },
+      select: { skill_id: true },
+    });
+    const existingIds = new Set(existingLinks.map((l) => l.skill_id));
+
+    const toRemove: number[] = Array.from(existingIds).filter(
+      (id) => !validIds.has(id)
+    );
+    const toAdd: number[] = Array.from(validIds).filter(
+      (id) => !existingIds.has(id)
+    );
+
+    if (toRemove.length > 0) {
+      await prisma.shiftTypeHasSkill.deleteMany({
+        where: { shift_type_id: shiftTypeId, skill_id: { in: toRemove } },
+      });
+    }
+    if (toAdd.length > 0) {
+      await prisma.shiftTypeHasSkill.createMany({
+        data: toAdd.map((id) => ({ shift_type_id: shiftTypeId, skill_id: id })),
+        skipDuplicates: true,
+      });
+    }
 
     logger.info('Shift type updated successfully', {
       userId: session.user.id,
@@ -346,6 +444,12 @@ export async function getShiftTypeById(shiftTypeId: number) {
           select: {
             id: true,
             name: true,
+          },
+        },
+        skills: {
+          select: {
+            skill_id: true,
+            skill: { select: { id: true, name: true } },
           },
         },
         _count: {

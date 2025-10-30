@@ -4,6 +4,7 @@ import { ShiftTypePageProps } from '@/types/shift-type';
 import {
   getShiftTypeById,
   getCurrentUserForShiftType,
+  getSkillsForShiftTypeForm,
 } from '@/server-actions/shift-type';
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
@@ -40,9 +41,17 @@ export default async function UpdateShiftTypePage({
     notFound();
   }
 
+  const skills = await getSkillsForShiftTypeForm();
+  const selectedSkillIds = (shiftType.skills || []).map((s) => s.skill_id);
+
   return (
     <div className="container mx-auto py-6">
-      <ShiftTypeForm shiftType={shiftType} mode="update" />
+      <ShiftTypeForm
+        shiftType={shiftType}
+        mode="update"
+        availableSkills={skills}
+        selectedSkillIds={selectedSkillIds}
+      />
     </div>
   );
 }

@@ -133,6 +133,7 @@ export const createShiftTypeSchema = z
       .max(100, 'shiftTypeNameTooLong'),
     start_time: z.string().min(1, 'startTimeRequired'),
     end_time: z.string().min(1, 'endTimeRequired'),
+    skill_ids: z.array(z.string()).optional().default([]),
   })
   .refine((data) => data.start_time !== data.end_time, {
     message: 'startTimeCannotEqualEndTime',
@@ -147,6 +148,7 @@ export const updateShiftTypeSchema = z
       .max(100, 'shiftTypeNameTooLong'),
     start_time: z.string().min(1, 'startTimeRequired'),
     end_time: z.string().min(1, 'endTimeRequired'),
+    skill_ids: z.array(z.string()).optional().default([]),
   })
   .refine((data) => data.start_time !== data.end_time, {
     message: 'startTimeCannotEqualEndTime',
