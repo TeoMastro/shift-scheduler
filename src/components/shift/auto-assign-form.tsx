@@ -58,8 +58,15 @@ export function AutoAssignForm({ companyId }: AutoAssignFormProps) {
         company_id: companyId!,
       });
 
-      // Console log the payload
-      console.log('Auto-Assign Payload:', JSON.stringify(payload, null, 2));
+      // Call solver route and wait for best solution
+      const res = await fetch('/api/solve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const result = await res.json();
+      console.log('Auto-Assign Result:', result);
 
       setSuccess(true);
     } catch (err) {

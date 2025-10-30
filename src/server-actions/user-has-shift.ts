@@ -1064,14 +1064,22 @@ export async function submitAutoAssignAction(data: {
     // Build shifts for each date in range for every shift type
     const allDays = eachDate(data.start_date, data.end_date);
     let idCounter = 0;
+    const mapRequiredSkill = (st: { name: string; start_time: string }) => {
+      const nameLower = st.name.toLowerCase();
+      if (nameLower.includes('morning')) return 'Plumber';
+      if (nameLower.includes('afternoon')) return 'Electrician';
+      // Fallback by start time: before 12:00 -> Morning, else Afternoon
+      const hour = parseInt(st.start_time.split(':')[0] || '0', 10);
+      return hour < 12 ? 'Plumber' : 'Electrician';
+    };
+
     const shifts = allDays.flatMap((ymd) =>
       shiftTypes.map((st) => ({
         id: String(idCounter++),
         start: joinDateTime(ymd, st.start_time),
         end: joinDateTime(ymd, st.end_time),
         location: 'Default',
-        requiredSkill: st.name,
-        skills: st.skills,
+        requiredSkill: mapRequiredSkill(st),
         employee: null,
       }))
     );
