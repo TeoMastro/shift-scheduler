@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { parseScore, isSolutionFeasible } from '@/lib/solution-parser';
+import { parseSolution, parseConstraintAnalysis } from '@/lib/solution-parser';
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL!;
 
@@ -51,17 +51,40 @@ export async function GET(
       );
     }
 
-    // Parse score and determine feasibility
-    const parsedScore = parseScore(solution.score || null);
-    // Check feasibility: hard score === 0 AND all shifts assigned
-    const isFeasible = isSolutionFeasible(parsedScore, solution.shifts);
+    const parsed = parseSolution({
+      jobId,
+      solution,
+    });
+
+    let constraintViolations = undefined;
+    if (solution.solverStatus === 'NOT_SOLVING') {
+      try {
+        const analyzeRes = await fetch(`${BACKEND}/schedules/analyze`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify(solution),
+          cache: 'no-store',
+        });
+
+        if (analyzeRes.ok) {
+          const analysis = await analyzeRes.json();
+          constraintViolations = parseConstraintAnalysis(analysis);
+        }
+      } catch (analyzeError) {
+        console.warn('Failed to analyze solution:', analyzeError);
+      }
+    }
 
     return NextResponse.json({
       jobId,
       solution,
-      solverStatus: solution.solverStatus,
-      isFeasible,
-      score: parsedScore,
+      solverStatus: parsed.solverStatus,
+      isFeasible: parsed.isFeasible,
+      score: parsed.score,
+      constraintViolations,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unexpected error';

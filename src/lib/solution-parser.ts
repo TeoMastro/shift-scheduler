@@ -19,12 +19,24 @@ export interface ParsedScore {
   soft: number;
 }
 
+export interface ConstraintViolation {
+  name: string;
+  type: 'hard' | 'soft';
+  weight: string;
+  score: string;
+  violations: Array<{
+    justification: any;
+    score: string;
+  }>;
+}
+
 export interface ParsedSolution {
   assignments: ShiftAssignment[];
   solverStatus: string;
   score: ParsedScore | null;
   isFeasible: boolean;
   error?: string;
+  constraintViolations?: ConstraintViolation[];
 }
 
 interface TimefoldShift {
@@ -47,11 +59,55 @@ interface TimefoldSolution {
   shifts: TimefoldShift[];
   score: string | null;
   solverStatus: string;
+  constraintViolations?: string[];
+  error?: string;
+  errors?: string[];
 }
 
 interface TimefoldResponse {
   jobId: string;
   solution: TimefoldSolution;
+}
+
+/**
+ * Parse constraint analysis from Timefold analyze endpoint
+ */
+export function parseConstraintAnalysis(
+  analysis: ScoreAnalysis
+): ConstraintViolation[] {
+  if (!analysis || !Array.isArray(analysis.constraints)) {
+    return [];
+  }
+
+  return analysis.constraints
+    .filter((constraint) => constraint.matches && constraint.matches.length > 0)
+    .map((constraint) => ({
+      name: constraint.name,
+      type: constraint.type,
+      weight: constraint.weight,
+      score: constraint.score,
+      violations: constraint.matches.map((match) => ({
+        justification: match.justification,
+        score: match.score,
+      })),
+    }));
+}
+
+interface ScoreAnalysis {
+  constraints: ConstraintAnalysis[];
+}
+
+interface ConstraintAnalysis {
+  name: string;
+  type: 'hard' | 'soft';
+  weight: string;
+  score: string;
+  matches: Match[];
+}
+
+interface Match {
+  justification: any;
+  score: string;
 }
 
 /**

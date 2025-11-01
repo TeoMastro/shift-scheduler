@@ -18,7 +18,8 @@ import {
 import { auth } from '@/lib/auth';
 import logger from '@/lib/logger';
 import { ShiftStatus } from '@prisma/client';
-import { formatTime } from '@/lib/time-utils';
+import { formatTime, timeToDate } from '@/lib/time-utils';
+import { ShiftAssignment } from '@/lib/solution-parser';
 
 async function checkShiftAccess(sessionUserId: number, sessionRole: string) {
   const user = await prisma.user.findUnique({
@@ -921,6 +922,65 @@ export async function getUserShiftsForCalendar() {
   }
 }
 
+/**
+ * Validates if there are existing shifts for a company within a date range
+ * Returns true if shifts exist, false otherwise
+ */
+export async function checkExistingShiftsInDateRange(
+  startDate: string,
+  endDate: string,
+  companyId: number
+): Promise<{ hasShifts: boolean; count?: number }> {
+  try {
+    const session = await auth();
+    if (!session) {
+      throw new Error('Unauthorized');
+    }
+
+    const { userCompanyId } = await checkShiftAccess(
+      +session.user.id,
+      session.user.role
+    );
+
+    // Ensure company matches
+    if (userCompanyId !== companyId) {
+      throw new Error('Company mismatch');
+    }
+
+    // Convert date strings to Date objects (start of day for start, end of day for end)
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    // Check if any shifts exist for this company in the date range
+    const count = await prisma.userHasShift.count({
+      where: {
+        user: {
+          company_id: companyId,
+        },
+        date: {
+          gte: start,
+          lte: end,
+        },
+      },
+    });
+
+    return {
+      hasShifts: count > 0,
+      count,
+    };
+  } catch (error) {
+    logger.error('Error checking existing shifts in date range', {
+      error: (error as Error).message,
+      stack: (error as Error).stack,
+      action: 'checkExistingShiftsInDateRange',
+    });
+    throw error;
+  }
+}
+
 export async function submitAutoAssignAction(data: {
   start_date: string;
   end_date: string;
@@ -1129,5 +1189,281 @@ export async function submitAutoAssignAction(data: {
       action: 'submitAutoAssignAction',
     });
     throw error;
+  }
+}
+
+interface StoreAssignmentResult {
+  success: boolean;
+  error?: string;
+  failedAssignments?: Array<{
+    assignmentId: string;
+    employeeName: string;
+    date: string;
+    reason: string;
+  }>;
+  savedCount?: number;
+}
+
+/**
+ * Stores auto-generated shift assignments in the database
+ * Uses a transaction to ensure all-or-nothing insertion
+ */
+export async function storeAutoAssignmentsAction(
+  assignments: ShiftAssignment[],
+  companyId: number
+): Promise<StoreAssignmentResult> {
+  try {
+    const session = await auth();
+    if (!session) {
+      return {
+        success: false,
+        error: 'Unauthorized',
+      };
+    }
+
+    const { userCompanyId } = await checkShiftAccess(
+      +session.user.id,
+      session.user.role
+    );
+
+    // Ensure company matches
+    if (userCompanyId !== companyId) {
+      return {
+        success: false,
+        error: 'Company mismatch',
+      };
+    }
+
+    if (!assignments || assignments.length === 0) {
+      return {
+        success: false,
+        error: 'No assignments provided',
+      };
+    }
+
+    // Fetch all shift types for this company (for matching)
+    const shiftTypes = await prisma.shiftType.findMany({
+      where: { company_id: companyId },
+      select: {
+        id: true,
+        start_time: true,
+        end_time: true,
+      },
+    });
+
+    if (shiftTypes.length === 0) {
+      return {
+        success: false,
+        error: 'No shift types found for this company',
+      };
+    }
+
+    // Fetch all employees for this company (for matching by name)
+    const employees = await prisma.user.findMany({
+      where: {
+        company_id: companyId,
+        role: { in: ['EMPLOYEE', 'MANAGER'] },
+      },
+      select: {
+        id: true,
+        first_name: true,
+        last_name: true,
+        email: true,
+      },
+    });
+
+    if (employees.length === 0) {
+      return {
+        success: false,
+        error: 'No employees found for this company',
+      };
+    }
+
+    // Create a map of employee name -> user for fast lookup
+    const employeeMap = new Map<string, (typeof employees)[0]>();
+    employees.forEach((emp) => {
+      const fullName = [emp.first_name, emp.last_name]
+        .filter(Boolean)
+        .join(' ')
+        .trim()
+        .toLowerCase();
+      if (fullName) {
+        employeeMap.set(fullName, emp);
+      }
+      // Also map by email as fallback
+      if (emp.email) {
+        employeeMap.set(emp.email.toLowerCase(), emp);
+      }
+    });
+
+    // Helper function to extract date portion (YYYY-MM-DD)
+    const extractDate = (date: Date): Date => {
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const day = date.getDate();
+      return new Date(year, month, day);
+    };
+
+    // Helper function to extract time string (HH:mm:ss) from a Date
+    const extractTimeString = (date: Date): string => {
+      return formatTime(date);
+    };
+
+    // Helper function to compare times (ignoring date)
+    const timesMatch = (time1: Date, time2: Date): boolean => {
+      const t1 = formatTime(time1);
+      const t2 = formatTime(time2);
+      return t1 === t2;
+    };
+
+    // Prepare assignments for insertion
+    const shiftsToInsert: Array<{
+      user_id: number;
+      shift_type_id: number;
+      date: Date;
+    }> = [];
+
+    const validationErrors: Array<{
+      assignmentId: string;
+      employeeName: string;
+      date: string;
+      reason: string;
+    }> = [];
+
+    // Validate and prepare each assignment
+    for (const assignment of assignments) {
+      // Extract date and time from assignment
+      const shiftDate = extractDate(assignment.start);
+      const shiftStartTime = extractTimeString(assignment.start);
+      const shiftEndTime = extractTimeString(assignment.end);
+
+      // Find matching employee
+      const employeeNameLower = assignment.employeeName.toLowerCase().trim();
+      const employee = employeeMap.get(employeeNameLower);
+
+      if (!employee) {
+        validationErrors.push({
+          assignmentId: assignment.id,
+          employeeName: assignment.employeeName,
+          date: shiftDate.toISOString().split('T')[0],
+          reason: 'Employee not found',
+        });
+        continue;
+      }
+
+      // Find matching shift type by start_time and end_time
+      const matchingShiftType = shiftTypes.find(
+        (st) =>
+          timesMatch(st.start_time, assignment.start) &&
+          timesMatch(st.end_time, assignment.end)
+      );
+
+      if (!matchingShiftType) {
+        validationErrors.push({
+          assignmentId: assignment.id,
+          employeeName: assignment.employeeName,
+          date: shiftDate.toISOString().split('T')[0],
+          reason: `Shift type not found for time ${shiftStartTime}-${shiftEndTime}`,
+        });
+        continue;
+      }
+
+      // Check for duplicate shift
+      const existingShift = await prisma.userHasShift.findUnique({
+        where: {
+          user_id_shift_type_id_date: {
+            user_id: employee.id,
+            shift_type_id: matchingShiftType.id,
+            date: shiftDate,
+          },
+        },
+      });
+
+      if (existingShift) {
+        validationErrors.push({
+          assignmentId: assignment.id,
+          employeeName: assignment.employeeName,
+          date: shiftDate.toISOString().split('T')[0],
+          reason: 'Shift already exists for this employee on this date',
+        });
+        continue;
+      }
+
+      // Add to insert list
+      shiftsToInsert.push({
+        user_id: employee.id,
+        shift_type_id: matchingShiftType.id,
+        date: shiftDate,
+      });
+    }
+
+    // If there are validation errors, return them (but allow partial saves if user wants)
+    // For now, we'll require all assignments to be valid before inserting
+    if (validationErrors.length > 0) {
+      return {
+        success: false,
+        error: `${validationErrors.length} assignment(s) failed validation`,
+        failedAssignments: validationErrors,
+      };
+    }
+
+    // Insert all shifts in a single transaction
+    if (shiftsToInsert.length === 0) {
+      return {
+        success: false,
+        error: 'No valid assignments to insert',
+      };
+    }
+
+    await prisma.$transaction(async (tx) => {
+      for (const shift of shiftsToInsert) {
+        await tx.userHasShift.create({
+          data: {
+            user_id: shift.user_id,
+            shift_type_id: shift.shift_type_id,
+            date: shift.date,
+            status: 'SCHEDULED',
+          },
+        });
+      }
+    });
+
+    logger.info('Auto-assigned shifts stored successfully', {
+      userId: session.user.id,
+      companyId,
+      count: shiftsToInsert.length,
+    });
+
+    revalidatePath('/shift');
+
+    return {
+      success: true,
+      savedCount: shiftsToInsert.length,
+    };
+  } catch (error) {
+    logger.error('Error storing auto-assigned shifts', {
+      error: (error as Error).message,
+      stack: (error as Error).stack,
+      action: 'storeAutoAssignmentsAction',
+    });
+
+    // Check if it's a Prisma unique constraint error
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      error.code === 'P2002'
+    ) {
+      return {
+        success: false,
+        error: 'One or more shifts already exist (duplicate detected)',
+      };
+    }
+
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : 'Failed to store assignments',
+    };
   }
 }

@@ -16,11 +16,16 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft } from 'lucide-react';
 import { InfoAlert } from '@/components/info-alert';
-import { submitAutoAssignAction } from '@/server-actions/user-has-shift';
+import {
+  submitAutoAssignAction,
+  storeAutoAssignmentsAction,
+  checkExistingShiftsInDateRange,
+} from '@/server-actions/user-has-shift';
 import {
   parseSolution,
   ShiftAssignment,
   ParsedScore,
+  ConstraintViolation,
 } from '@/lib/solution-parser';
 import { ShiftPreviewCalendar } from './shift-preview-calendar';
 
@@ -46,6 +51,11 @@ export function AutoAssignForm({ companyId }: AutoAssignFormProps) {
   const [jobId, setJobId] = useState<string | null>(null);
   const [score, setScore] = useState<ParsedScore | null>(null);
   const [solverStatus, setSolverStatus] = useState<string>('');
+  const [constraintViolations, setConstraintViolations] = useState<
+    ConstraintViolation[]
+  >([]);
+  const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pollStartTimeRef = useRef<number | null>(null);
@@ -102,6 +112,16 @@ export function AutoAssignForm({ companyId }: AutoAssignFormProps) {
       setScore(parsed.score);
       setSolverStatus(parsed.solverStatus);
 
+      // Set constraint violations from API response (from analyze endpoint)
+      if (
+        data.constraintViolations &&
+        Array.isArray(data.constraintViolations)
+      ) {
+        setConstraintViolations(data.constraintViolations);
+      } else {
+        setConstraintViolations([]);
+      }
+
       // Determine status
       if (parsed.solverStatus === 'NOT_SOLVING') {
         stopPolling();
@@ -144,6 +164,7 @@ export function AutoAssignForm({ companyId }: AutoAssignFormProps) {
     setScore(null);
     setJobId(null);
     setSolverStatus('');
+    setConstraintViolations([]);
 
     if (!startDate || !endDate) {
       setError(t('dateRangeRequired'));
@@ -161,6 +182,22 @@ export function AutoAssignForm({ companyId }: AutoAssignFormProps) {
     setLoading(true);
 
     try {
+      const existingShiftsCheck = await checkExistingShiftsInDateRange(
+        startDate,
+        endDate,
+        companyId!
+      );
+
+      if (existingShiftsCheck.hasShifts) {
+        setError(
+          t('shiftsAlreadyExistInDateRange', {
+            count: existingShiftsCheck.count || 0,
+          })
+        );
+        setLoading(false);
+        return;
+      }
+
       const payload = await submitAutoAssignAction({
         start_date: startDate,
         end_date: endDate,
@@ -203,6 +240,45 @@ export function AutoAssignForm({ companyId }: AutoAssignFormProps) {
       setError(err instanceof Error ? err.message : t('unexpectedError'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAcceptAssignments = async () => {
+    if (!companyId || assignments.length === 0) {
+      setError('Cannot save: Invalid company or no assignments');
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      const result = await storeAutoAssignmentsAction(assignments, companyId);
+
+      if (result.success) {
+        setError(null);
+        setSaveSuccess(true);
+        router.push(
+          `/shift?message=${encodeURIComponent('assignmentsSavedSuccess')}`
+        );
+      } else {
+        setSaveSuccess(false);
+        // Handle errors
+        let errorMessage = result.error || t('assignmentsSaveError');
+
+        if (result.failedAssignments && result.failedAssignments.length > 0) {
+          errorMessage += '\n\nFailed assignments:';
+          result.failedAssignments.forEach((fa) => {
+            errorMessage += `\n- ${fa.employeeName} (${fa.date}): ${fa.reason}`;
+          });
+        }
+
+        setError(errorMessage);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('assignmentsSaveError'));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -378,6 +454,84 @@ export function AutoAssignForm({ companyId }: AutoAssignFormProps) {
                 </div>
               )}
             </div>
+
+            {/* Constraint Violations */}
+            {constraintViolations.length > 0 && (
+              <div className="mt-4 space-y-4 p-4 border rounded-lg bg-destructive/5">
+                <div className="text-sm font-medium text-destructive">
+                  {t('constraintViolations')}:
+                </div>
+                <div className="space-y-3">
+                  {constraintViolations.map((constraint, idx) => (
+                    <div
+                      key={idx}
+                      className="text-sm border-l-2 pl-3"
+                      style={{
+                        borderColor:
+                          constraint.type === 'hard'
+                            ? 'rgb(239 68 68)'
+                            : 'rgb(234 179 8)',
+                      }}
+                    >
+                      <div className="font-medium">
+                        {constraint.name} ({constraint.type})
+                      </div>
+                      <div className="text-muted-foreground text-xs mt-1">
+                        Penalty: {constraint.score} | Weight:{' '}
+                        {constraint.weight}
+                      </div>
+                      {constraint.violations.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          <div className="text-xs font-medium text-muted-foreground">
+                            Violations ({constraint.violations.length}):
+                          </div>
+                          {constraint.violations.map((violation, vIdx) => (
+                            <div
+                              key={vIdx}
+                              className="text-xs text-muted-foreground pl-2"
+                            >
+                              • Score: {violation.score}
+                              {violation.justification &&
+                                typeof violation.justification === 'object' && (
+                                  <div className="pl-2 mt-1 opacity-75">
+                                    {JSON.stringify(
+                                      violation.justification,
+                                      null,
+                                      2
+                                    )}
+                                  </div>
+                                )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Accept Button - Show when solution is solved or infeasible */}
+            {(solutionStatus === 'solved' || solutionStatus === 'infeasible') &&
+              assignments.length > 0 && (
+                <div className="mt-6 pt-4 border-t">
+                  {solutionStatus === 'infeasible' && (
+                    <div className="mb-4">
+                      <InfoAlert
+                        message={t('infeasibleWarning')}
+                        type="warning"
+                      />
+                    </div>
+                  )}
+                  <Button
+                    onClick={handleAcceptAssignments}
+                    disabled={saving || !companyId}
+                    className="w-full sm:w-auto"
+                  >
+                    {saving ? t('savingAssignments') : t('acceptAssignments')}
+                  </Button>
+                </div>
+              )}
           </CardContent>
         </Card>
       )}
