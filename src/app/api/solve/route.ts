@@ -2,10 +2,6 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL!;
-const POLL_MS = 2000;
-const TIMEOUT_MS = 60_000; // wait up to 60s
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -33,7 +29,7 @@ export async function POST(request: Request) {
       });
     }
 
-    // 1) Start solving
+    // Start solving job and return jobId immediately for frontend polling
     const startRes = await fetch(`${BACKEND}/schedules`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'text/plain' },
@@ -41,42 +37,17 @@ export async function POST(request: Request) {
     });
 
     if (!startRes.ok) {
+      const errorText = await startRes.text();
       return NextResponse.json(
-        { error: await startRes.text() },
+        { error: errorText },
         { status: startRes.status }
       );
     }
 
     const jobId = await startRes.text();
 
-    // 2) Poll best solution until solver completes or timeout
-    const begin = Date.now();
-    let lastSolution: any = null;
-    while (Date.now() - begin < TIMEOUT_MS) {
-      const solRes = await fetch(`${BACKEND}/schedules/${jobId}`, {
-        headers: { Accept: 'application/json' },
-        cache: 'no-store',
-      });
-
-      if (!solRes.ok) {
-        return NextResponse.json(
-          { error: await solRes.text() },
-          { status: solRes.status }
-        );
-      }
-
-      const solution = await solRes.json();
-      lastSolution = solution;
-
-      if (solution.solverStatus === 'NOT_SOLVING') {
-        return NextResponse.json({ jobId, solution });
-      }
-
-      await sleep(POLL_MS);
-    }
-
-    // return best-so-far if time runs out
-    return NextResponse.json({ jobId, solution: lastSolution, timedOut: true });
+    // Return jobId immediately for frontend to poll
+    return NextResponse.json({ jobId, status: 'SOLVING' });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unexpected error';
     return new Response(message, { status: 500 });

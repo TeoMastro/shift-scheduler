@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
@@ -13,13 +13,25 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { ArrowLeft } from 'lucide-react';
 import { InfoAlert } from '@/components/info-alert';
 import { submitAutoAssignAction } from '@/server-actions/user-has-shift';
+import {
+  parseSolution,
+  ShiftAssignment,
+  ParsedScore,
+} from '@/lib/solution-parser';
+import { ShiftPreviewCalendar } from './shift-preview-calendar';
 
 interface AutoAssignFormProps {
   companyId: number | null;
 }
+
+type SolutionStatus = 'idle' | 'solving' | 'solved' | 'failed' | 'infeasible';
+
+const POLL_INTERVAL_MS = 2000;
+const MAX_POLL_DURATION_MS = 60_000; // 60 seconds
 
 export function AutoAssignForm({ companyId }: AutoAssignFormProps) {
   const router = useRouter();
@@ -29,12 +41,109 @@ export function AutoAssignForm({ companyId }: AutoAssignFormProps) {
   const [endDate, setEndDate] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [solutionStatus, setSolutionStatus] = useState<SolutionStatus>('idle');
+  const [assignments, setAssignments] = useState<ShiftAssignment[]>([]);
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [score, setScore] = useState<ParsedScore | null>(null);
+  const [solverStatus, setSolverStatus] = useState<string>('');
+
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollStartTimeRef = useRef<number | null>(null);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, []);
+
+  const stopPolling = () => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+    pollStartTimeRef.current = null;
+  };
+
+  const pollSolutionStatus = async (currentJobId: string) => {
+    try {
+      const res = await fetch(`/api/solve/status/${currentJobId}`);
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText || 'Failed to fetch solution status');
+      }
+
+      const data = await res.json();
+
+      // Check for timeout
+      if (
+        pollStartTimeRef.current &&
+        Date.now() - pollStartTimeRef.current > MAX_POLL_DURATION_MS
+      ) {
+        stopPolling();
+        setSolutionStatus('failed');
+        setError(
+          'Solution polling timed out. Best-so-far solution is displayed.'
+        );
+        return;
+      }
+
+      // Parse the solution
+      const parsed = parseSolution({
+        jobId: currentJobId,
+        solution: data.solution,
+      });
+
+      // Update state
+      setAssignments(parsed.assignments);
+      setScore(parsed.score);
+      setSolverStatus(parsed.solverStatus);
+
+      // Determine status
+      if (parsed.solverStatus === 'NOT_SOLVING') {
+        stopPolling();
+        if (parsed.isFeasible) {
+          setSolutionStatus('solved');
+        } else {
+          setSolutionStatus('infeasible');
+          setError(
+            t('problemInfeasible', {
+              hard: parsed.score?.hard ?? 0,
+            })
+          );
+        }
+      } else if (
+        parsed.solverStatus === 'SOLVING' ||
+        parsed.solverStatus === 'SOLVING_SCHEDULED'
+      ) {
+        setSolutionStatus('solving');
+      } else {
+        // Unknown status, continue polling
+        setSolutionStatus('solving');
+      }
+
+      // Handle parsing errors
+      if (parsed.error) {
+        console.error('Parsing error:', parsed.error);
+      }
+    } catch (err) {
+      stopPolling();
+      setSolutionStatus('failed');
+      setError(err instanceof Error ? err.message : t('unexpectedError'));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setSuccess(false);
+    setSolutionStatus('idle');
+    setAssignments([]);
+    setScore(null);
+    setJobId(null);
+    setSolverStatus('');
 
     if (!startDate || !endDate) {
       setError(t('dateRangeRequired'));
@@ -58,26 +167,81 @@ export function AutoAssignForm({ companyId }: AutoAssignFormProps) {
         company_id: companyId!,
       });
 
-      // Call solver route and wait for best solution
+      // Start solving job
       const res = await fetch('/api/solve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error(await res.text());
-      const result = await res.json();
-      console.log('Auto-Assign Result:', result);
 
-      setSuccess(true);
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText || 'Failed to start auto-assignment');
+      }
+
+      const result = await res.json();
+      const newJobId = result.jobId;
+
+      if (!newJobId) {
+        throw new Error('No job ID returned from server');
+      }
+
+      setJobId(newJobId);
+      setSolutionStatus('solving');
+
+      // Start polling
+      pollStartTimeRef.current = Date.now();
+      pollingIntervalRef.current = setInterval(() => {
+        pollSolutionStatus(newJobId);
+      }, POLL_INTERVAL_MS);
+
+      // Do initial poll immediately
+      pollSolutionStatus(newJobId);
     } catch (err) {
+      stopPolling();
+      setSolutionStatus('failed');
       setError(err instanceof Error ? err.message : t('unexpectedError'));
     } finally {
       setLoading(false);
     }
   };
 
+  // Get status badge color and message
+  const getStatusDisplay = () => {
+    switch (solutionStatus) {
+      case 'solving':
+        return {
+          variant: 'default' as const,
+          message: t('assignmentInProgress'),
+          type: 'warning' as const,
+        };
+      case 'solved':
+        return {
+          variant: 'default' as const,
+          message: t('assignmentSolved'),
+          type: 'success' as const,
+        };
+      case 'infeasible':
+        return {
+          variant: 'destructive' as const,
+          message: t('solutionInfeasible'),
+          type: 'error' as const,
+        };
+      case 'failed':
+        return {
+          variant: 'destructive' as const,
+          message: t('assignmentFailed'),
+          type: 'error' as const,
+        };
+      default:
+        return null;
+    }
+  };
+
+  const statusDisplay = getStatusDisplay();
+
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button
@@ -98,9 +262,9 @@ export function AutoAssignForm({ companyId }: AutoAssignFormProps) {
       {/* Error message */}
       {error && <InfoAlert message={error} type="error" />}
 
-      {/* Success message */}
-      {success && (
-        <InfoAlert message={t('payloadGeneratedSuccess')} type="success" />
+      {/* Status message */}
+      {statusDisplay && (
+        <InfoAlert message={statusDisplay.message} type={statusDisplay.type} />
       )}
 
       {/* Form */}
@@ -120,7 +284,7 @@ export function AutoAssignForm({ companyId }: AutoAssignFormProps) {
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   required
-                  disabled={loading}
+                  disabled={loading || solutionStatus === 'solving'}
                 />
               </div>
               <div className="space-y-2">
@@ -131,20 +295,25 @@ export function AutoAssignForm({ companyId }: AutoAssignFormProps) {
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   required
-                  disabled={loading}
+                  disabled={loading || solutionStatus === 'solving'}
                 />
               </div>
             </div>
 
             <div className="flex gap-2">
-              <Button type="submit" disabled={loading}>
-                {loading ? t('generating') : t('generatePayload')}
+              <Button
+                type="submit"
+                disabled={loading || solutionStatus === 'solving'}
+              >
+                {loading || solutionStatus === 'solving'
+                  ? t('generating')
+                  : t('generatePayload')}
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => router.push('/shift')}
-                disabled={loading}
+                disabled={loading || solutionStatus === 'solving'}
               >
                 {t('cancel')}
               </Button>
@@ -152,6 +321,74 @@ export function AutoAssignForm({ companyId }: AutoAssignFormProps) {
           </form>
         </CardContent>
       </Card>
+
+      {/* Solution Status and Score */}
+      {(solutionStatus !== 'idle' || score) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('solutionStatus')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">{t('status')}:</span>
+                <Badge
+                  variant={
+                    solutionStatus === 'solved'
+                      ? 'default'
+                      : solutionStatus === 'infeasible' ||
+                          solutionStatus === 'failed'
+                        ? 'destructive'
+                        : 'secondary'
+                  }
+                >
+                  {solverStatus || solutionStatus}
+                </Badge>
+              </div>
+              {score && (
+                <div className="flex flex-wrap gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">
+                      {t('hardScore')}:
+                    </span>{' '}
+                    <span
+                      className={
+                        score.hard > 0 ? 'font-semibold text-destructive' : ''
+                      }
+                    >
+                      {score.hard}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">
+                      {t('softScore')}:
+                    </span>{' '}
+                    <span className="font-medium">{score.soft.toFixed(2)}</span>
+                  </div>
+                  <div>
+                    <Badge
+                      variant={score.hard === 0 ? 'default' : 'destructive'}
+                      className="ml-2"
+                    >
+                      {score.hard === 0
+                        ? t('solutionFeasible')
+                        : t('solutionInfeasible')}
+                    </Badge>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Preview Calendar */}
+      {(assignments.length > 0 || solutionStatus === 'solving') && (
+        <ShiftPreviewCalendar
+          assignments={assignments}
+          isLoading={solutionStatus === 'solving'}
+        />
+      )}
     </div>
   );
 }
