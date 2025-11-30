@@ -28,6 +28,7 @@ model Company {
   users       User[]
   shift_types ShiftType[]
   skills      Skill[]
+  solutions   Solution[]
 
   @@map("company")
 }
@@ -54,6 +55,7 @@ model User {
   skills            UserHasSkill[]
   date_preferences  ShiftDatePreference[]
   unavailable_dates UnavailableDate[]
+  created_solutions Solution[]
 
   @@map("user")
 }
@@ -103,8 +105,9 @@ model UserHasShift {
   created_at    DateTime    @default(now())
   updated_at    DateTime    @updatedAt
 
-  user       User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  shift_type ShiftType @relation(fields: [shift_type_id], references: [id])
+  user                 User                      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  shift_type           ShiftType                 @relation(fields: [shift_type_id], references: [id])
+  solution_assignments SolutionShiftAssignment[]
 
   @@unique([user_id, shift_type_id, date])
   @@map("user_has_shift")
@@ -202,4 +205,50 @@ model UnavailableDate {
   @@unique([user_id, start_date, end_date])
   @@index([user_id, start_date, end_date])
   @@map("unavailable_date")
+}
+
+model Solution {
+  id                 Int      @id @default(autoincrement())
+  company_id         Int
+  timefold_job_id    String   @unique
+  start_date         DateTime @db.Date
+  end_date           DateTime @db.Date
+  hard_score         Int
+  soft_score         Float
+  is_feasible        Boolean
+  solver_status      String
+  created_by_user_id Int
+  parent_solution_id Int?
+  version            Int      @default(1)
+  metadata           Json?
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  company           Company                   @relation(fields: [company_id], references: [id])
+  created_by        User                      @relation(fields: [created_by_user_id], references: [id])
+  parent_solution   Solution?                 @relation("SolutionVersioning", fields: [parent_solution_id], references: [id])
+  child_solutions   Solution[]                @relation("SolutionVersioning")
+  shift_assignments SolutionShiftAssignment[]
+
+  @@index([company_id, created_at])
+  @@index([timefold_job_id])
+  @@map("solution")
+}
+
+model SolutionShiftAssignment {
+  id                      Int      @id @default(autoincrement())
+  solution_id             Int
+  user_has_shift_id       Int
+  timefold_required_skill String
+  location                String
+  timefold_shift_id       String
+  is_modified             Boolean  @default(false)
+  created_at              DateTime @default(now())
+
+  solution       Solution     @relation(fields: [solution_id], references: [id], onDelete: Cascade)
+  user_has_shift UserHasShift @relation(fields: [user_has_shift_id], references: [id], onDelete: Cascade)
+
+  @@index([solution_id])
+  @@index([user_has_shift_id])
+  @@map("solution_shift_assignment")
 }

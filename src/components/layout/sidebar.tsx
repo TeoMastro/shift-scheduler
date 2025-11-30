@@ -7,6 +7,7 @@ import {
   Home,
   Users,
   XCircle,
+  ListChecks,
 } from 'lucide-react';
 
 import {
@@ -81,6 +82,11 @@ export async function AppSidebar() {
             title: t('shifts'),
             url: '/shift',
             icon: Calendar,
+          },
+          {
+            title: t('solutions'),
+            url: '/shift/solutions',
+            icon: ListChecks,
           },
           {
             title: t('skills'),

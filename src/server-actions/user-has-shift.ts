@@ -516,12 +516,19 @@ export async function updateShiftAction(
       },
     });
 
+    // Mark shift as modified if it's part of a solution
+    await prisma.solutionShiftAssignment.updateMany({
+      where: { user_has_shift_id: shiftId },
+      data: { is_modified: true },
+    });
+
     logger.info('Shift updated successfully', {
       userId: session.user.id,
       updatedShiftId: shiftId,
     });
 
     revalidatePath('/shift');
+    revalidatePath('/shift/solutions');
   } catch (error) {
     logger.error('Unexpected error during shift update', {
       error: (error as Error).message,
@@ -1124,14 +1131,6 @@ export async function submitAutoAssignAction(data: {
     // Build shifts for each date in range for every shift type
     const allDays = eachDate(data.start_date, data.end_date);
     let idCounter = 0;
-    const mapRequiredSkill = (st: { name: string; start_time: string }) => {
-      const nameLower = st.name.toLowerCase();
-      if (nameLower.includes('morning')) return 'Plumber';
-      if (nameLower.includes('afternoon')) return 'Electrician';
-      // Fallback by start time: before 12:00 -> Morning, else Afternoon
-      const hour = parseInt(st.start_time.split(':')[0] || '0', 10);
-      return hour < 12 ? 'Plumber' : 'Electrician';
-    };
 
     const shifts = allDays.flatMap((ymd) =>
       shiftTypes.map((st) => ({
@@ -1139,7 +1138,8 @@ export async function submitAutoAssignAction(data: {
         start: joinDateTime(ymd, st.start_time),
         end: joinDateTime(ymd, st.end_time),
         location: 'Default',
-        requiredSkill: mapRequiredSkill(st),
+        // Use the first skill associated with this shift type, or empty string if none
+        requiredSkill: st.skills.length > 0 ? st.skills[0] : '',
         employee: null,
       }))
     );
@@ -1202,6 +1202,7 @@ interface StoreAssignmentResult {
     reason: string;
   }>;
   savedCount?: number;
+  solutionId?: number;
 }
 
 /**
@@ -1210,7 +1211,18 @@ interface StoreAssignmentResult {
  */
 export async function storeAutoAssignmentsAction(
   assignments: ShiftAssignment[],
-  companyId: number
+  companyId: number,
+  solutionMetadata?: {
+    jobId: string;
+    startDate: string;
+    endDate: string;
+    hardScore: number;
+    softScore: number;
+    isFeasible: boolean;
+    solverStatus: string;
+    constraintViolations?: any[];
+    parentSolutionId?: number | null;
+  }
 ): Promise<StoreAssignmentResult> {
   try {
     const session = await auth();
@@ -1321,6 +1333,8 @@ export async function storeAutoAssignmentsAction(
       user_id: number;
       shift_type_id: number;
       date: Date;
+      assignment: ShiftAssignment;
+      employee: (typeof employees)[0];
     }> = [];
 
     const validationErrors: Array<{
@@ -1368,32 +1382,13 @@ export async function storeAutoAssignmentsAction(
         continue;
       }
 
-      // Check for duplicate shift
-      const existingShift = await prisma.userHasShift.findUnique({
-        where: {
-          user_id_shift_type_id_date: {
-            user_id: employee.id,
-            shift_type_id: matchingShiftType.id,
-            date: shiftDate,
-          },
-        },
-      });
-
-      if (existingShift) {
-        validationErrors.push({
-          assignmentId: assignment.id,
-          employeeName: assignment.employeeName,
-          date: shiftDate.toISOString().split('T')[0],
-          reason: 'Shift already exists for this employee on this date',
-        });
-        continue;
-      }
-
       // Add to insert list
       shiftsToInsert.push({
         user_id: employee.id,
         shift_type_id: matchingShiftType.id,
         date: shiftDate,
+        assignment: assignment,
+        employee: employee,
       });
     }
 
@@ -1415,9 +1410,76 @@ export async function storeAutoAssignmentsAction(
       };
     }
 
+    let solutionId: number | undefined;
+
     await prisma.$transaction(async (tx) => {
+      // If this is a re-optimization (warm-start), delete ALL shifts from parent solution
+      if (solutionMetadata?.parentSolutionId) {
+        const deletedShifts = await tx.userHasShift.deleteMany({
+          where: {
+            solution_assignments: {
+              some: {
+                solution_id: solutionMetadata.parentSolutionId,
+              },
+            },
+          },
+        });
+
+        logger.info(
+          'Deleted all shifts from parent solution for re-optimization',
+          {
+            userId: session.user.id,
+            companyId,
+            parentSolutionId: solutionMetadata.parentSolutionId,
+            deletedCount: deletedShifts.count,
+          }
+        );
+      }
+
+      // Create Solution record if metadata provided
+      let solution;
+      if (solutionMetadata) {
+        // If warm-start, get parent solution version to increment
+        let version = 1;
+        if (solutionMetadata.parentSolutionId) {
+          const parentSolution = await tx.solution.findUnique({
+            where: { id: solutionMetadata.parentSolutionId },
+            select: { version: true },
+          });
+          if (parentSolution) {
+            version = parentSolution.version + 1;
+          }
+        }
+
+        solution = await tx.solution.create({
+          data: {
+            company_id: companyId,
+            timefold_job_id: solutionMetadata.jobId,
+            start_date: new Date(solutionMetadata.startDate),
+            end_date: new Date(solutionMetadata.endDate),
+            hard_score: solutionMetadata.hardScore,
+            soft_score: solutionMetadata.softScore,
+            is_feasible: solutionMetadata.isFeasible,
+            solver_status: solutionMetadata.solverStatus,
+            created_by_user_id: +session.user.id,
+            parent_solution_id: solutionMetadata.parentSolutionId,
+            version,
+            metadata: solutionMetadata.constraintViolations
+              ? {
+                  constraintViolations: solutionMetadata.constraintViolations,
+                  totalAssignments: shiftsToInsert.length,
+                }
+              : {
+                  totalAssignments: shiftsToInsert.length,
+                },
+          },
+        });
+        solutionId = solution.id;
+      }
+
+      // Create UserHasShift records and link to solution
       for (const shift of shiftsToInsert) {
-        await tx.userHasShift.create({
+        const createdShift = await tx.userHasShift.create({
           data: {
             user_id: shift.user_id,
             shift_type_id: shift.shift_type_id,
@@ -1425,6 +1487,20 @@ export async function storeAutoAssignmentsAction(
             status: 'SCHEDULED',
           },
         });
+
+        // Create SolutionShiftAssignment if solution exists
+        if (solution) {
+          await tx.solutionShiftAssignment.create({
+            data: {
+              solution_id: solution.id,
+              user_has_shift_id: createdShift.id,
+              timefold_required_skill: shift.assignment.requiredSkill,
+              location: shift.assignment.location,
+              timefold_shift_id: shift.assignment.id,
+              is_modified: false,
+            },
+          });
+        }
       }
     });
 
@@ -1432,6 +1508,7 @@ export async function storeAutoAssignmentsAction(
       userId: session.user.id,
       companyId,
       count: shiftsToInsert.length,
+      solutionId,
     });
 
     revalidatePath('/shift');
@@ -1439,6 +1516,7 @@ export async function storeAutoAssignmentsAction(
     return {
       success: true,
       savedCount: shiftsToInsert.length,
+      solutionId,
     };
   } catch (error) {
     logger.error('Error storing auto-assigned shifts', {

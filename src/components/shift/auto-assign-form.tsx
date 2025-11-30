@@ -51,14 +51,39 @@ export function AutoAssignForm({ companyId }: AutoAssignFormProps) {
   const [jobId, setJobId] = useState<string | null>(null);
   const [score, setScore] = useState<ParsedScore | null>(null);
   const [solverStatus, setSolverStatus] = useState<string>('');
+  const [isFeasible, setIsFeasible] = useState<boolean>(false);
   const [constraintViolations, setConstraintViolations] = useState<
     ConstraintViolation[]
   >([]);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  // Warm-start mode
+  const [isWarmStart, setIsWarmStart] = useState(false);
+  const [parentSolutionId, setParentSolutionId] = useState<number | null>(null);
+
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pollStartTimeRef = useRef<number | null>(null);
+
+  // Check for warm-start mode on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('warmStart') === 'true') {
+      const payloadStr = sessionStorage.getItem('warmStartPayload');
+      if (payloadStr) {
+        try {
+          const payload = JSON.parse(payloadStr);
+          setIsWarmStart(true);
+          setParentSolutionId(payload.metadata.parentSolutionId);
+          setStartDate(payload.metadata.startDate);
+          setEndDate(payload.metadata.endDate);
+          sessionStorage.removeItem('warmStartPayload'); // Clean up
+        } catch (e) {
+          console.error('Failed to parse warm-start payload:', e);
+        }
+      }
+    }
+  }, []);
 
   // Cleanup polling on unmount
   useEffect(() => {
@@ -111,6 +136,7 @@ export function AutoAssignForm({ companyId }: AutoAssignFormProps) {
       setAssignments(parsed.assignments);
       setScore(parsed.score);
       setSolverStatus(parsed.solverStatus);
+      setIsFeasible(parsed.isFeasible);
 
       // Set constraint violations from API response (from analyze endpoint)
       if (
@@ -182,20 +208,23 @@ export function AutoAssignForm({ companyId }: AutoAssignFormProps) {
     setLoading(true);
 
     try {
-      const existingShiftsCheck = await checkExistingShiftsInDateRange(
-        startDate,
-        endDate,
-        companyId!
-      );
-
-      if (existingShiftsCheck.hasShifts) {
-        setError(
-          t('shiftsAlreadyExistInDateRange', {
-            count: existingShiftsCheck.count || 0,
-          })
+      // For warm-start, conflicts already checked in validation
+      if (!isWarmStart) {
+        const existingShiftsCheck = await checkExistingShiftsInDateRange(
+          startDate,
+          endDate,
+          companyId!
         );
-        setLoading(false);
-        return;
+
+        if (existingShiftsCheck.hasShifts) {
+          setError(
+            t('shiftsAlreadyExistInDateRange', {
+              count: existingShiftsCheck.count || 0,
+            })
+          );
+          setLoading(false);
+          return;
+        }
       }
 
       const payload = await submitAutoAssignAction({
@@ -249,11 +278,30 @@ export function AutoAssignForm({ companyId }: AutoAssignFormProps) {
       return;
     }
 
+    if (!jobId || !startDate || !endDate || !score) {
+      setError('Missing solution metadata');
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
     try {
-      const result = await storeAutoAssignmentsAction(assignments, companyId);
+      const result = await storeAutoAssignmentsAction(
+        assignments,
+        companyId,
+        {
+          jobId,
+          startDate,
+          endDate,
+          hardScore: score.hard,
+          softScore: score.soft,
+          isFeasible,
+          solverStatus,
+          constraintViolations,
+          parentSolutionId,
+        }
+      );
 
       if (result.success) {
         setError(null);
@@ -323,17 +371,29 @@ export function AutoAssignForm({ companyId }: AutoAssignFormProps) {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => router.push('/shift')}
+          onClick={() => router.push(isWarmStart ? '/shift/solutions' : '/shift')}
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold">{t('autoAssign')}</h1>
+          <h1 className="text-2xl font-bold">
+            {isWarmStart ? t('reOptimizeSchedule') : t('autoAssign')}
+          </h1>
           <p className="text-muted-foreground mt-1">
-            {t('autoAssignDescription')}
+            {isWarmStart
+              ? t('reOptimizeDescription')
+              : t('autoAssignDescription')}
           </p>
         </div>
       </div>
+
+      {/* Warm-start indicator */}
+      {isWarmStart && parentSolutionId && (
+        <InfoAlert
+          message={t('warmStartMode', { solutionId: parentSolutionId })}
+          type="info"
+        />
+      )}
 
       {/* Error message */}
       {error && <InfoAlert message={error} type="error" />}
@@ -360,7 +420,7 @@ export function AutoAssignForm({ companyId }: AutoAssignFormProps) {
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   required
-                  disabled={loading || solutionStatus === 'solving'}
+                  disabled={loading || solutionStatus === 'solving' || isWarmStart}
                 />
               </div>
               <div className="space-y-2">
@@ -371,7 +431,7 @@ export function AutoAssignForm({ companyId }: AutoAssignFormProps) {
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   required
-                  disabled={loading || solutionStatus === 'solving'}
+                  disabled={loading || solutionStatus === 'solving' || isWarmStart}
                 />
               </div>
             </div>
